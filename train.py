@@ -22,6 +22,7 @@ class args(Config):
     START_LR = 1e-3
     STOP_LR = 1e-4
     DECAY_OVER = 400000
+    DEVICE = 0 if torch.cuda.is_available() else None
 
 
 args.parse_args()
@@ -29,9 +30,7 @@ args.parse_args()
 with open(args.CONFIG, "r") as config:
     config = yaml.safe_load(config)
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-model = DDSP(**config["model"]).to(device)
+model = DDSP(**config["model"]).to(args.DEVICE)
 
 dataset = Dataset(config["preprocess"]["out_dir"])
 
@@ -68,11 +67,20 @@ n_element = 0
 step = 0
 epochs = int(np.ceil(args.STEPS / len(dataloader)))
 
+
+def multiscale_spec_loss(ori_stft, rec_stft):
+    loss = 0
+    for s_x, s_y in zip(ori_stft, rec_stft):
+        lin_loss = (s_x - s_y).abs().mean()
+        log_loss = (safe_log(s_x) - safe_log(s_y)).abs().mean()
+        loss = loss + lin_loss + log_loss
+    return loss
+
 for e in tqdm(range(epochs)):
     for s, p, l in dataloader:
-        s = s.to(device)
-        p = p.unsqueeze(-1).to(device)
-        l = l.unsqueeze(-1).to(device)
+        s = s.to(args.DEVICE)
+        p = p.unsqueeze(-1).to(args.DEVICE)
+        l = l.unsqueeze(-1).to(args.DEVICE)
 
         l = (l - mean_loudness) / std_loudness
 
@@ -89,11 +97,7 @@ for e in tqdm(range(epochs)):
             config["train"]["overlap"],
         )
 
-        loss = 0
-        for s_x, s_y in zip(ori_stft, rec_stft):
-            lin_loss = (s_x - s_y).abs().mean()
-            log_loss = (safe_log(s_x) - safe_log(s_y)).abs().mean()
-            loss = loss + lin_loss + log_loss
+        loss = multiscale_spec_loss(ori_stft, rec_stft)
 
         opt.zero_grad()
         loss.backward()
