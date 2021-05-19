@@ -54,8 +54,8 @@ IDX = 0
 
 def reconstruction_report(writer: SummaryWriter, config: dict,
                           original_stft: np.ndarray, reconstructed_stft: np.ndarray,
-                          harmonic_amps: np.ndarray, f0: np.ndarray,
-                          loudness: np.ndarray, tag: str, step: int):
+                          harmonic_amps: np.ndarray, noise_filter: np.ndarray,
+                          f0: np.ndarray, loudness: np.ndarray, tag: str, step: int):
 
     fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(12, 5))
 
@@ -84,6 +84,10 @@ def reconstruction_report(writer: SummaryWriter, config: dict,
     loudness = tonp(loudness[IDX].squeeze(-1))
     axes[1][1].set_title('Loudness')
     plot_sig(midi, axes[1][1])
+
+    noise_filter = tonp(noise_filter[IDX])
+    axes[0][2].set_title('Noise Filter')
+    plot_spec(noise_filter, axes[0][2])
 
     harmonic_amps = tonp(harmonic_amps[IDX].T)
     axes[1][2].set_title('Harmonic Envelope')

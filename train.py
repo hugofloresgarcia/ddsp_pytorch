@@ -139,6 +139,7 @@ for e in pbar:
                                                      original_stft=sig_stft, 
                                                      reconstructed_stft=rec_stft, 
                                                      harmonic_amps=output['harmonic_amps'],
+                                                     noise_filter=output['noise_filter'],
                                                      f0=p, loudness=l, tag='report', 
                                                      step=e)
 
@@ -147,8 +148,8 @@ for e in pbar:
                          sig[ddsp.utils.IDX],
                          global_step=e,
                          sample_rate=config['preprocess']["sampling_rate"])
-        writer.add_audio('rec',
-                         rec[ddsp.utils.IDX],
+        writer.add_audio('rec (amplified)',
+                         rec[ddsp.utils.IDX] * 10,
                          global_step=e,
                          sample_rate=config['preprocess']["sampling_rate"])
 

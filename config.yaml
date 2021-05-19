@@ -1,5 +1,5 @@
 data:
-  data_location: "./data/nsynth-patch/train/synth_lead_synthetic_000"
+  data_location: "./data/nsynth-patch/train/mallet_acoustic_026"
   extension: "wav"
 
 preprocess:
@@ -8,7 +8,7 @@ preprocess:
   block_size: &blocksize 512 # must be a power of 2 if using realtime
 
   oneshot: false # crop every audio file to exactly signal length
-  out_dir: "./cache/nsynth-patch/train/synth_lead_synthetic_000"
+  out_dir: "./cache/nsynth-patch/train/mallet_acoustic_026"
 
 model:
   hidden_size: 512

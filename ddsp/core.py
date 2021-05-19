@@ -66,9 +66,9 @@ def upsample(signal, factor):
     return signal.permute(0, 2, 1)
 
 
-def remove_above_nyquist(amplitudes, pitch, sampling_rate):
+def remove_above_nyquist(amplitudes, f0, sampling_rate):
     n_harm = amplitudes.shape[-1]
-    pitches = pitch * torch.arange(1, n_harm + 1).to(pitch)
+    pitches = f0 * torch.arange(1, n_harm + 1).to(f0)
     aa = (pitches < sampling_rate / 2).float() + 1e-4
     return amplitudes * aa
 
@@ -132,9 +132,9 @@ def gru(n_input, hidden_size):
     return nn.GRU(n_input * hidden_size, hidden_size, batch_first=True)
 
 
-def harmonic_synth(pitch, amplitudes, sampling_rate):
+def harmonic_synth(f0, amplitudes, sampling_rate):
     n_harmonic = amplitudes.shape[-1]
-    omega = torch.cumsum(2 * math.pi * pitch / sampling_rate, 1)
+    omega = torch.cumsum(2 * math.pi * f0 / sampling_rate, 1)
     omegas = omega * torch.arange(1, n_harmonic + 1).to(omega)
     signal = (torch.sin(omegas) * amplitudes).sum(-1, keepdim=True)
     return signal
