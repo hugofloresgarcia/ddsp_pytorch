@@ -1,4 +1,5 @@
 import torch
+import ddsp
 from torch.utils.tensorboard import SummaryWriter
 import yaml
 from ddsp.model import DDSP
@@ -125,6 +126,7 @@ for e in tqdm(range(epochs)):
         mean_loss = 0
         n_element = 0
 
+        # OH so it plays the desired and THEN the reconstruction
         audio = torch.cat([s, y], -1).reshape(-1).detach().cpu().numpy()
 
         sf.write(
@@ -132,3 +134,7 @@ for e in tqdm(range(epochs)):
             audio,
             config["preprocess"]["sampling_rate"],
         )
+
+        # log original and recreated stfts
+        writer.add_figure('ori_stft', utils.)
+
