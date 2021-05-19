@@ -71,6 +71,17 @@ step = 0
 epochs = int(np.ceil(args.STEPS / len(dataloader)))
 
 
+### HELPERS
+def tonp(tensor):
+    return tensor.detach().cpu().numpy()
+
+def log_sample_stft(stft, tag):
+    stft = tonp(stft[0][0])
+    fig = ddsp.utils.plot_spec(stft)[0]
+    writer.add_figure(tag, fig, e)
+    return fig
+###
+
 def multiscale_spec_loss(ori_stft, rec_stft):
     loss = 0
     for s_x, s_y in zip(ori_stft, rec_stft):
@@ -138,8 +149,7 @@ for e in tqdm(range(epochs)):
         )
 
         # log original and recreated stfts
-        fig = ddsp.utils.plot_spec(ori_stft)[0]
-        writer.add_figure('ori_stft', fig, e)
-
-        fig = ddsp.utils.plot_spec(rec_stft)[0]
-        writer.add_figure('rec_stft', fig, e)
+        # each of these spectrograms is multiscale (has channels for different window sizes)
+        # so we'll just plot one of them
+        log_sample_stft(ori_stft, tag='ori_stft')
+        log_sample_stft(rec_stft, tag='rec_stft')
