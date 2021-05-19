@@ -14,6 +14,9 @@ ln -s /media/CHONK/data/nsynth data/nsynth
 
 download nsynth
 ```bash
+mkdir nsynth
+cd nsynth 
+
 wget http://download.magenta.tensorflow.org/datasets/nsynth/nsynth-test.jsonwav.tar.gz
 tar -xvzf nsynth-test.jsonwav.tar.gz 
 
@@ -22,6 +25,14 @@ tar -xvzf nsynth-valid.jsonwav.tar.gz
 
 wget http://download.magenta.tensorflow.org/datasets/nsynth/nsynth-train.jsonwav.tar.gz
 tar -xvzf nsynth-train.jsonwav.tar.gz 
+```
+
+### Create Insrument Splits for NSynth
+
+will organize nsynth audio by instrument family (for ddsp_pytorch's preprocess)
+
+```bash 
+python nsynth-inst-split.py --root_dir <PATH_TO_NSYNTH> --target_dir <OUTPUT_DIR>
 ```
 
 # Differentiable Digital Signal Processing

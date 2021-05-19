@@ -26,6 +26,7 @@ class NSynth(torch.utils.data.Dataset):
         self.root = root
         self.audio_path = self.root / 'audio'
         self.sample_rate = sample_rate
+        self.inst_key = 'instrument_family_str'
 
         # grab the records
         with open(self.root / 'examples.json') as f:
@@ -38,11 +39,15 @@ class NSynth(torch.utils.data.Dataset):
         if instrument_subset is not None:
             self.records = self.filter_by_instruments(instrument_subset)
 
-        self.classlist = list(set(r['instrument_str'] for r in self.records))
+        self.classlist = list(
+            set(r[self.inst_key] for r in self.records))
 
     def filter_by_instruments(self, instruments: List[str]):
         # filter by instrument subset
-        return [r for r in self.records if r['instrument_str'] in instruments]
+        return [
+            r for r in self.records
+            if r[self.inst_key] in instruments
+        ]
 
     def __len__(self):
         return len(self.records)
@@ -59,7 +64,7 @@ class NSynth(torch.utils.data.Dataset):
         audio_path = Path(self.audio_path / data['name']).with_suffix('.wav')
         item['audio'] = AudioSignal(path_to_input_file=audio_path, )
         item['audio_path'] = str(audio_path)
-        item['instrument'] = data['instrument_str']
+        item['instrument'] = data[self.inst_key]
         item['data'] = data
 
         return item
@@ -90,4 +95,13 @@ def create_inst_view(root_dir: Path, target_dir: Path):
 
 if __name__ == "__main__":
     args.parse_args()
-    create_inst_view(Path(args.root_dir), Path(args.target_dir))
+
+    root = Path(args.root_dir)
+    target = Path(args.target_dir)
+    partitions = ['valid', 'test', 'train',]
+
+    for part in partitions:
+        proot = root / f'nsynth-{part}'
+        ptarget = target / part
+
+        create_inst_view(proot, ptarget)
