@@ -13,6 +13,8 @@ from einops import rearrange
 from ddsp.utils import get_scheduler
 import numpy as np
 
+LOG_INTERVAL = 100 # in epochs
+
 
 class args(Config):
     CONFIG = "config.yaml"
@@ -111,7 +113,7 @@ for e in tqdm(range(epochs)):
         n_element += 1
         mean_loss += (loss.item() - mean_loss) / n_element
 
-    if not e % 1000:
+    if not e % LOG_INTERVAL:
         writer.add_scalar("lr", schedule(e), e)
         writer.add_scalar("reverb_decay", model.reverb.decay.item(), e)
         writer.add_scalar("reverb_wet", model.reverb.wet.item(), e)
@@ -136,5 +138,8 @@ for e in tqdm(range(epochs)):
         )
 
         # log original and recreated stfts
-        writer.add_figure('ori_stft', utils.)
+        fig = ddsp.utils.plot_spec(ori_stft)[0]
+        writer.add_figure('ori_stft', fig, e)
 
+        fig = ddsp.utils.plot_spec(rec_stft)[0]
+        writer.add_figure('rec_stft', fig, e)
