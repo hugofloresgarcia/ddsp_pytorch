@@ -103,7 +103,16 @@ class DDSP(nn.Module):
         #reverb part
         signal = self.reverb(signal)
 
-        return signal
+        output = {
+            'signal': signal, 
+            'noise': noise, 
+            'harmonic_audio': harmonic,
+            'harmonic_amps': amplitudes, 
+            'noise_filter': impulse,
+            'reverb_impulse': self.reverb.build_impulse(),
+        }
+
+        return output
 
     def realtime_forward(self, pitch, loudness):
         hidden = torch.cat([

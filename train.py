@@ -12,8 +12,9 @@ import soundfile as sf
 from einops import rearrange
 from ddsp.utils import get_scheduler
 import numpy as np
+import librosa as li
 
-LOG_INTERVAL = 100 # in epochs
+LOG_INTERVAL = 1 # in epochs
 
 
 class args(Config):
@@ -70,18 +71,6 @@ n_element = 0
 step = 0
 epochs = int(np.ceil(args.STEPS / len(dataloader)))
 
-
-### HELPERS
-def tonp(tensor):
-    return tensor.detach().cpu().numpy()
-
-def log_sample_stft(stft, tag):
-    stft = tonp(stft[0][0])
-    fig = ddsp.utils.plot_spec(stft)[0]
-    writer.add_figure(tag, fig, e)
-    return fig
-###
-
 def multiscale_spec_loss(ori_stft, rec_stft):
     loss = 0
     for s_x, s_y in zip(ori_stft, rec_stft):
@@ -90,28 +79,30 @@ def multiscale_spec_loss(ori_stft, rec_stft):
         loss = loss + lin_loss + log_loss
     return loss
 
-for e in tqdm(range(epochs)):
-    for s, p, l in dataloader:
-        s = s.to(args.DEVICE)
+pbar = tqdm(range(epochs))
+for e in pbar:
+    for sig, p, l in dataloader:
+        sig = sig.to(args.DEVICE)
         p = p.unsqueeze(-1).to(args.DEVICE)
         l = l.unsqueeze(-1).to(args.DEVICE)
 
         l = (l - mean_loudness) / std_loudness
 
-        y = model(p, l).squeeze(-1)
+        output = model(p, l)
+        rec = output['signal'].squeeze(-1)
 
-        ori_stft = multiscale_fft(
-            s,
+        sig_stft = multiscale_fft(
+            sig,
             config["train"]["scales"],
             config["train"]["overlap"],
         )
         rec_stft = multiscale_fft(
-            y,
+            rec,
             config["train"]["scales"],
             config["train"]["overlap"],
         )
 
-        loss = multiscale_spec_loss(ori_stft, rec_stft)
+        loss = multiscale_spec_loss(sig_stft, rec_stft)
 
         opt.zero_grad()
         loss.backward()
@@ -120,10 +111,12 @@ for e in tqdm(range(epochs)):
         writer.add_scalar("loss", loss.item(), step)
 
         step += 1
+        pbar.set_description(desc=f'step {step%len(dataset)}/{len(dataset)}')
 
         n_element += 1
         mean_loss += (loss.item() - mean_loss) / n_element
 
+    # LOGGING
     if not e % LOG_INTERVAL:
         writer.add_scalar("lr", schedule(e), e)
         writer.add_scalar("reverb_decay", model.reverb.decay.item(), e)
@@ -139,17 +132,25 @@ for e in tqdm(range(epochs)):
         mean_loss = 0
         n_element = 0
 
-        # OH so it plays the desired and THEN the reconstruction
-        audio = torch.cat([s, y], -1).reshape(-1).detach().cpu().numpy()
-
-        sf.write(
-            path.join(args.ROOT, args.NAME, f"eval_{e:06d}.wav"),
-            audio,
-            config["preprocess"]["sampling_rate"],
-        )
-
         # log original and recreated stfts
         # each of these spectrograms is multiscale (has channels for different window sizes)
         # so we'll just plot one of them
-        log_sample_stft(ori_stft, tag='ori_stft')
-        log_sample_stft(rec_stft, tag='rec_stft')
+
+        ddsp.utils.log_sample_stft(writer, sig_stft, 'sig_stft', e,
+                                   config)
+        ddsp.utils.log_sample_stft(writer, rec_stft, 'rec_stft', e,
+                                   config)
+
+        # log the audio to tb (instead of writing to file)
+        writer.add_audio('sig',
+                         sig[ddsp.utils.IDX],
+                         global_step=e,
+                         sample_rate=config['preprocess']["sampling_rate"])
+        writer.add_audio('rec',
+                         rec[ddsp.utils.IDX],
+                         global_step=e,
+                         sample_rate=config['preprocess']["sampling_rate"])
+
+        ddsp.utils.log_harmonic_amps(writer, output['harmonic_amps'], 'harmonic_amps', e)
+        ddsp.utils.log_pitch_curve(writer, p, 'pitch (midi)', e)
+        ddsp.utils.log_loudness_curve(writer, l, 'loudness', e)

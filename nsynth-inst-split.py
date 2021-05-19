@@ -26,7 +26,7 @@ class NSynth(torch.utils.data.Dataset):
         self.root = root
         self.audio_path = self.root / 'audio'
         self.sample_rate = sample_rate
-        self.inst_key = 'instrument_family_str'
+        self.inst_key = 'instrument_str'
 
         # grab the records
         with open(self.root / 'examples.json') as f:
