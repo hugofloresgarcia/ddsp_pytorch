@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import librosa as li
+from torch.utils.tensorboard.writer import SummaryWriter
 
 def get_scheduler(len_dataset, start_lr, stop_lr, length):
     def schedule(epoch):
@@ -14,10 +15,8 @@ def get_scheduler(len_dataset, start_lr, stop_lr, length):
     return schedule
 
 
-def plot_sig(sig, stem=False):
+def plot_sig(sig, ax, stem=False):
     """ plot a 1d signal """
-    plt.close('all')
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(9, 4))
 
     if stem:
         ax.stem(sig)
@@ -26,19 +25,18 @@ def plot_sig(sig, stem=False):
 
     ax.set_xlabel('sample')
 
-    return fig, ax
+    return ax
 
-
-def plot_spec(stft):
+def plot_spec(stft, ax):
     """ returns a fig and an ax"""
-    plt.close('all')
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(9, 4))
     pr = lambda m: li.amplitude_to_db(m)
     im = ax.imshow(pr(stft), aspect='auto')
-    ax.invert_yaxis()
-    fig.colorbar(im, ax=ax)
 
-    return fig, ax
+    fig = plt.gcf()
+    fig.colorbar(im, ax=ax)
+    ax.invert_yaxis()
+
+    return ax
 
 def hz_to_midi(freqs):
     return 12 * np.log2(freqs / 440) + 69
@@ -49,37 +47,50 @@ def midi_to_hz(midi):
 def tonp(tensor):
     return tensor.detach().cpu().numpy()
 
+def stft_to_mel(stft, sr: int, n_fft: int, hop: int):
+    return li.feature.melspectrogram(S=stft, sr=sr, n_fft=n_fft, hop_length=hop)
+
 IDX = 0
 
-def log_sample_stft(writer, stft, tag, step, config, mel=True):
-    # use a medium scale for multi-scale stft
-    scl_idx = len(stft[IDX])//2
-    stft = tonp(stft[IDX][scl_idx])
+def reconstruction_report(writer: SummaryWriter, config: dict,
+                          original_stft: np.ndarray, reconstructed_stft: np.ndarray,
+                          harmonic_amps: np.ndarray, f0: np.ndarray,
+                          loudness: np.ndarray, tag: str, step: int):
 
-    if mel:
-        sr = config['preprocess']["sampling_rate"]
-        n_fft = config["train"]["scales"][IDX]
-        hop_length = config["train"]["overlap"]
-        stft = li.feature.melspectrogram(S=stft, sr=sr, n_fft=n_fft, hop_length=hop_length)
+    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(12, 5))
 
-    fig, ax = plot_spec(stft)
+    # we get a multi-scale spectrogram, but we want to only access 1
+    scale_idx = len(config['train']['scales'])//2
+    sr = config['preprocess']['sampling_rate']
+    n_fft = config['train']['scales'][IDX]
+    hop = config['train']['overlap']
+
+    original_stft = tonp(original_stft[IDX][scale_idx])
+    original_stft = stft_to_mel(original_stft, sr, n_fft, hop)
+    axes[1][0].set_title('Original')
+    plot_spec(original_stft, axes[0][0])
+
+    reconstructed_stft = tonp(reconstructed_stft[IDX][scale_idx])
+    reconstructed_stft = stft_to_mel(reconstructed_stft, sr, n_fft, hop)
+    axes[1][0].set_title('Reconstruction')
+    plot_spec(reconstructed_stft, axes[1][0])
+
+    f0 = tonp(f0[IDX].squeeze(-1))
+    midi = hz_to_midi(f0)
+    axes[0][1].set_title('F0 contour')
+    axes[0][1].set_ylim([-1, 128])
+    plot_sig(midi, axes[0][1])
+
+    loudness = tonp(loudness[IDX].squeeze(-1))
+    axes[1][1].set_title('Loudness')
+    plot_sig(midi, axes[1][1])
+
+    harmonic_amps = tonp(harmonic_amps[IDX].T)
+    axes[1][2].set_title('Harmonic Envelope')
+    plot_spec(harmonic_amps, axes[1][2])
+
+    fig.suptitle('reconstruction report')
+    fig.tight_layout()
+
     writer.add_figure(tag, fig, step)
-    return fig
-
-def log_harmonic_amps(writer, amps, tag, step):
-    amps = tonp(amps[IDX].T)
-    fig, ax = plot_spec(amps)
-    writer.add_figure(tag, fig, step)
-    return fig
-
-def log_pitch_curve(writer, pitches, tag, step):
-    freqs = tonp(pitches[IDX].squeeze(-1))
-    midi = hz_to_midi(freqs)
-    fig, ax = plot_sig(midi)
-    ax.set_ylim([-1, 128])
-    writer.add_figure(tag, fig, step)
-
-def log_loudness_curve(writer, loudness, tag, step):
-    loud = tonp(loudness[IDX].squeeze(-1))
-    fig, ax = plot_sig(loud)
-    writer.add_figure(tag, fig, step)
+    return fig, axes

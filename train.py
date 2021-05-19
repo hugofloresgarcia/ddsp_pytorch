@@ -135,11 +135,12 @@ for e in pbar:
         # log original and recreated stfts
         # each of these spectrograms is multiscale (has channels for different window sizes)
         # so we'll just plot one of them
-
-        ddsp.utils.log_sample_stft(writer, sig_stft, 'sig_stft', e,
-                                   config)
-        ddsp.utils.log_sample_stft(writer, rec_stft, 'rec_stft', e,
-                                   config)
+        fig, axes = ddsp.utils.reconstruction_report(writer=writer, config=config, 
+                                                     original_stft=sig_stft, 
+                                                     reconstructed_stft=rec_stft, 
+                                                     harmonic_amps=output['harmonic_amps'],
+                                                     f0=p, loudness=l, tag='report', 
+                                                     step=e)
 
         # log the audio to tb (instead of writing to file)
         writer.add_audio('sig',
@@ -151,6 +152,3 @@ for e in pbar:
                          global_step=e,
                          sample_rate=config['preprocess']["sampling_rate"])
 
-        ddsp.utils.log_harmonic_amps(writer, output['harmonic_amps'], 'harmonic_amps', e)
-        ddsp.utils.log_pitch_curve(writer, p, 'pitch (midi)', e)
-        ddsp.utils.log_loudness_curve(writer, l, 'loudness', e)
