@@ -90,8 +90,7 @@ def create_inst_view(root_dir: Path, target_dir: Path):
             link_path.parent.mkdir(parents=True, exist_ok=True)
 
             # make the symbolic link
-            os.symlink(audio_path, link_path, target_is_directory=False)
-
+            os.symlink(audio_path, link_path)
 
 if __name__ == "__main__":
     args.parse_args()
