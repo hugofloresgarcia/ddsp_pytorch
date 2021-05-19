@@ -27,10 +27,11 @@ def plot_sig(sig, ax, stem=False):
 
     return ax
 
-def plot_spec(stft, ax):
+def plot_spec(stft, ax, amp_to_db=True):
     """ returns a fig and an ax"""
     pr = lambda m: li.amplitude_to_db(m)
-    im = ax.imshow(pr(stft), aspect='auto')
+    stft = pr(stft) if amp_to_db else stft
+    im = ax.imshow(stft, aspect='auto')
 
     fig = plt.gcf()
     fig.colorbar(im, ax=ax)
@@ -87,7 +88,7 @@ def reconstruction_report(writer: SummaryWriter, config: dict,
 
     noise_filter = tonp(noise_filter[IDX])
     axes[0][2].set_title('Noise Filter')
-    plot_spec(noise_filter, axes[0][2])
+    plot_spec(noise_filter, axes[0][2], amp_to_db=False)
 
     harmonic_amps = tonp(harmonic_amps[IDX].T)
     axes[1][2].set_title('Harmonic Envelope')

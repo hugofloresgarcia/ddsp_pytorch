@@ -32,7 +32,7 @@ tar -xvzf nsynth-train.jsonwav.tar.gz
 will organize nsynth audio by instrument family (for ddsp_pytorch's preprocess)
 
 ```bash 
-python nsynth-inst-split.py --root_dir <PATH_TO_NSYNTH> --target_dir <OUTPUT_DIR>
+python nsynth-inst-split.py --root-dir <PATH_TO_NSYNTH> --target-dir <OUTPUT_DIR>
 ```
 
 # Differentiable Digital Signal Processing

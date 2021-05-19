@@ -90,6 +90,7 @@ class DDSP(nn.Module):
         param = scale_function(self.proj_matrices[1](hidden) - 5)
 
         impulse = amp_to_impulse_response(param, self.block_size)
+        # create a noise vector N(0, 1)
         noise = torch.rand(
             impulse.shape[0],
             impulse.shape[1],
@@ -110,7 +111,7 @@ class DDSP(nn.Module):
             'noise': noise, 
             'harmonic_audio': harmonic,
             'harmonic_amps': amplitudes, 
-            'noise_filter': impulse,
+            'noise_filter': torch.fft.rfft(impulse).abs(),
             'reverb_impulse': self.reverb.build_impulse(),
         }
 
