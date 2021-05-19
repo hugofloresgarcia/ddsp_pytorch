@@ -83,14 +83,14 @@ def create_inst_view(root_dir: Path, target_dir: Path):
 
         for record in records:
             # get the audio path
-            audio_path = dataset.get_audio_path(record)
+            audio_path = dataset.get_audio_path(record).absolute()
 
             # define symlink path
             link_path = target_dir / inst / audio_path.name
             link_path.parent.mkdir(parents=True, exist_ok=True)
 
             # make the symbolic link
-            os.symlink(audio_path, link_path)
+            os.symlink(audio_path, link_path, target_is_directory=False)
 
 
 if __name__ == "__main__":

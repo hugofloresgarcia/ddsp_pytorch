@@ -1,5 +1,5 @@
 data:
-  data_location: "./data/"
+  data_location: "./data/nsynth-inst/valid/bass"
   extension: "wav"
 
 preprocess:
@@ -8,7 +8,7 @@ preprocess:
   block_size: &blocksize 512 # must be a power of 2 if using realtime
 
   oneshot: false # crop every audio file to exactly signal length
-  out_dir: ./preprocessed/
+  out_dir: ./cache/
 
 model:
   hidden_size: 512
