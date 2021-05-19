@@ -39,7 +39,7 @@ class Reverb(nn.Module):
 
 class DDSP(nn.Module):
     def __init__(self, hidden_size, n_harmonic, n_bands, sampling_rate,
-                 block_size):
+                 block_size, has_reverb: bool):
         super().__init__()
         self.register_buffer("sampling_rate", torch.tensor(sampling_rate))
         self.register_buffer("block_size", torch.tensor(block_size))
@@ -53,6 +53,7 @@ class DDSP(nn.Module):
             nn.Linear(hidden_size, n_bands),
         ])
 
+        self.has_reverb = has_reverb
         self.reverb = Reverb(sampling_rate, sampling_rate)
 
         self.register_buffer("cache_gru", torch.zeros(1, 1, hidden_size))
@@ -101,7 +102,8 @@ class DDSP(nn.Module):
         signal = harmonic + noise
 
         #reverb part
-        signal = self.reverb(signal)
+        if self.has_reverb:
+            signal = self.reverb(signal)
 
         output = {
             'signal': signal, 

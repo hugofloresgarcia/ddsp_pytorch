@@ -34,8 +34,9 @@ def plot_spec(stft):
     plt.close('all')
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(9, 4))
     pr = lambda m: li.amplitude_to_db(m)
-    ax.imshow(pr(stft), aspect='auto')
+    im = ax.imshow(pr(stft), aspect='auto')
     ax.invert_yaxis()
+    fig.colorbar(im, ax=ax)
 
     return fig, ax
 
