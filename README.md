@@ -1,3 +1,29 @@
+## Installing
+
+install pytorch_ddsp
+
+```bash
+pip install -e .
+```
+
+(if you're on seethlord, do this instead of redownloading):
+```bash
+mkdir data
+ln -s /media/CHONK/data/nsynth data/nsynth
+```
+
+download nsynth
+```bash
+wget http://download.magenta.tensorflow.org/datasets/nsynth/nsynth-test.jsonwav.tar.gz
+tar -xvzf nsynth-test.jsonwav.tar.gz 
+
+wget http://download.magenta.tensorflow.org/datasets/nsynth/nsynth-valid.jsonwav.tar.gz
+tar -xvzf nsynth-valid.jsonwav.tar.gz
+
+wget http://download.magenta.tensorflow.org/datasets/nsynth/nsynth-train.jsonwav.tar.gz
+tar -xvzf nsynth-train.jsonwav.tar.gz 
+```
+
 # Differentiable Digital Signal Processing
 
 ![ddsp_tilde_screenshot](patchs/screenshot_bitwig.png)
