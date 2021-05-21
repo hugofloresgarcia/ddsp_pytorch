@@ -52,7 +52,7 @@ def stft_to_mel(stft, sr: int, n_fft: int, hop: int):
 def plot_f0(ax, f0, index: int = 0):
     f0 = tonp(f0[index].squeeze(-1))
     midi = hz_to_midi(f0)
-    ax.set_title('F0 (midi)')
+    ax.set_title('F0 (MIDI)')
     ax.set_ylim([-1, 128])
     plot_sig(midi, ax)
 
