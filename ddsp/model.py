@@ -183,9 +183,10 @@ class DDSPDecoder(nn.Module):
         return output
 
     def realtime_forward(self, pitch, loudness):
+        # forward pass through decoder model
         hidden = torch.cat([
-            self.in_mlps[0](pitch),
-            self.in_mlps[1](loudness),
+            self.f0_mlp(pitch),
+            self.loudness_mlp(loudness),
         ], -1)
 
         gru_out, cache = self.gru(hidden, self.cache_gru)
