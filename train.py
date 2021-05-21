@@ -63,8 +63,6 @@ schedule = get_scheduler(
     args.DECAY_OVER,
 )
 
-# scheduler = torch.optim.lr_scheduler.LambdaLR(opt, schedule)
-
 best_loss = float("inf")
 mean_loss = 0
 n_element = 0
@@ -132,24 +130,18 @@ for e in pbar:
         mean_loss = 0
         n_element = 0
 
-        # log original and recreated stfts
-        # each of these spectrograms is multiscale (has channels for different window sizes)
-        # so we'll just plot one of them
-        fig, axes = ddsp.utils.reconstruction_report(writer=writer, config=config, 
-                                                     original_stft=sig_stft, 
-                                                     reconstructed_stft=rec_stft, 
-                                                     harmonic_amps=output['harmonic_distribution'],
-                                                     noise_filter=output['noise_magnitudes'],
-                                                     f0=p, loudness=l, tag='report', 
-                                                     step=e)
-
         # log the audio to tb (instead of writing to file)
+        BATCH_LOG_IDX = 0
         writer.add_audio('sig',
-                         sig[ddsp.utils.IDX],
+                         sig[BATCH_LOG_IDX],
                          global_step=e,
                          sample_rate=config['preprocess']["sample_rate"])
         writer.add_audio('rec',
-                         rec[ddsp.utils.IDX],
+                         rec[BATCH_LOG_IDX],
                          global_step=e,
                          sample_rate=config['preprocess']["sample_rate"])
 
+        fig = model.reconstruction_report(sig_stft, rec_stft,
+                                          config, output,
+                                          index=BATCH_LOG_IDX)
+        writer.add_figure('reconstruction', fig, e)
