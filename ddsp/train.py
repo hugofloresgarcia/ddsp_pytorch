@@ -1,10 +1,6 @@
-from pytorch_lightning.accelerators import accelerator
-from torch.functional import Tensor
 import ddsp
-from preprocess import Dataset
 
 from pathlib import Path
-
 import yaml
 from effortless_config import Config
 
@@ -177,14 +173,13 @@ def train(config):
     trainer.fit(task, datamodule=datamodule)
 
 
-
 if __name__ == "__main__":
     class args(Config):
         CONFIG = "config.yaml"
         NAME = "debug"
         DEVICE = 0 if torch.cuda.is_available() else None
         ROOT = 'runs'
-        
+
     args.parse_args()
 
     with open(args.CONFIG, "r") as config:
