@@ -66,10 +66,10 @@ def upsample(signal, factor):
     return signal.permute(0, 2, 1)
 
 
-def remove_above_nyquist(amplitudes, f0, sampling_rate):
+def remove_above_nyquist(amplitudes, f0, sample_rate):
     n_harm = amplitudes.shape[-1]
     pitches = f0 * torch.arange(1, n_harm + 1).to(f0)
-    aa = (pitches < sampling_rate / 2).float() + 1e-4
+    aa = (pitches < sample_rate / 2).float() + 1e-4
     return amplitudes * aa
 
 
@@ -77,7 +77,7 @@ def scale_function(x):
     return 2 * torch.sigmoid(x)**(math.log(10)) + 1e-7
 
 
-def extract_loudness(signal, sampling_rate, block_size, n_fft=2048):
+def extract_loudness(signal, sample_rate, block_size, n_fft=2048):
     S = li.stft(
         signal,
         n_fft=n_fft,
@@ -86,7 +86,7 @@ def extract_loudness(signal, sampling_rate, block_size, n_fft=2048):
         center=True,
     )
     S = np.log(abs(S) + 1e-7)
-    f = li.fft_frequencies(sampling_rate, n_fft)
+    f = li.fft_frequencies(sample_rate, n_fft)
     a_weight = li.A_weighting(f)
 
     S = S + a_weight.reshape(-1, 1)
@@ -96,12 +96,12 @@ def extract_loudness(signal, sampling_rate, block_size, n_fft=2048):
     return S
 
 
-def extract_pitch(signal, sampling_rate, block_size):
+def extract_pitch(signal, sample_rate, block_size):
     length = signal.shape[-1] // block_size
     f0 = crepe.predict(
         signal,
-        sampling_rate,
-        step_size=int(1000 * block_size / sampling_rate),
+        sample_rate,
+        step_size=int(1000 * block_size / sample_rate),
         verbose=1,
         center=True,
         viterbi=True,
@@ -132,9 +132,9 @@ def gru(n_input, hidden_size):
     return nn.GRU(n_input * hidden_size, hidden_size, batch_first=True)
 
 
-def harmonic_synth(f0, amplitudes, sampling_rate):
+def harmonic_synth(f0, amplitudes, sample_rate):
     n_harmonic = amplitudes.shape[-1]
-    omega = torch.cumsum(2 * math.pi * f0 / sampling_rate, 1)
+    omega = torch.cumsum(2 * math.pi * f0 / sample_rate, 1)
     omegas = omega * torch.arange(1, n_harmonic + 1).to(omega)
     signal = (torch.sin(omegas) * amplitudes).sum(-1, keepdim=True)
     return signal

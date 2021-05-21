@@ -2,21 +2,19 @@ import torch
 import torch.nn as nn
 from .core import mlp, gru, scale_function, remove_above_nyquist, upsample
 from .core import harmonic_synth, amp_to_impulse_response, fft_convolve
-from .core import resample
-import math
 
 
 class Reverb(nn.Module):
-    def __init__(self, length, sampling_rate, initial_wet=0, initial_decay=5):
+    def __init__(self, length, sample_rate, initial_wet=0, initial_decay=5):
         super().__init__()
         self.length = length
-        self.sampling_rate = sampling_rate
+        self.sample_rate = sample_rate
 
         self.noise = nn.Parameter((torch.rand(length) * 2 - 1).unsqueeze(-1))
         self.decay = nn.Parameter(torch.tensor(float(initial_decay)))
         self.wet = nn.Parameter(torch.tensor(float(initial_wet)))
 
-        t = torch.arange(self.length) / self.sampling_rate
+        t = torch.arange(self.length) / self.sample_rate
         t = t.reshape(1, -1, 1)
         self.register_buffer("t", t)
 
@@ -108,49 +106,51 @@ class FilteredNoise(nn.Module):
 
         return noise
 
-
-class DDSP(nn.Module):
+class DDSPDecoder(nn.Module):
     """
-    DDSP Decoder with no encoded Z dimension.
+    DDSP GRU Decoder with no encoded Z dimension.
 
     This model uses only pitch and loudness as input. 
     """
-    def __init__(self, hidden_size: int, n_harmonic: int, n_bands: int, sampling_rate: int,
+    def __init__(self, hidden_size: int, n_harmonic: int, n_bands: int, sample_rate: int,
                  block_size: int, has_reverb: bool):
         super().__init__()
-        self.register_buffer("sampling_rate", torch.tensor(sampling_rate))
+        self.register_buffer("sample_rate", torch.tensor(sample_rate))
         self.register_buffer("block_size", torch.tensor(block_size))
 
-        self.in_mlps = nn.ModuleList([mlp(1, hidden_size, 3)] * 2)
+        # projections from f0 and loudness to GRU
+        self.f0_mlp = mlp(in_size=1, hidden_size=hidden_size, n_layers=3)
+        self.loudness_mlp = mlp(in_size=1, hidden_size=hidden_size, n_layers=3)
+
+        # GRU decoder
         self.gru = gru(2, hidden_size)
         self.out_mlp = mlp(hidden_size + 2, hidden_size, 3)
 
-        self.proj_matrices = nn.ModuleList([
-            nn.Linear(hidden_size, n_harmonic + 1),
-            nn.Linear(hidden_size, n_bands),
-        ])
+        self.harmonic_proj = nn.Linear(hidden_size, n_harmonic + 1)
+        self.noise_proj = nn.Linear(hidden_size, n_bands)
 
         self.harmonic_synth = HarmonicSynth(block_size=block_size,
-                                            sample_rate=sampling_rate)
+                                            sample_rate=sample_rate)
         self.noise_synth = FilteredNoise(block_size=block_size,
                                          window_size=n_bands)
 
         self.has_reverb = has_reverb
-        self.reverb = Reverb(sampling_rate, sampling_rate)
+        self.reverb = Reverb(sample_rate, sample_rate)
 
         self.register_buffer("cache_gru", torch.zeros(1, 1, hidden_size))
         self.register_buffer("phase", torch.zeros(1))
 
     def forward(self, pitch, loudness):
+        # forward pass through decoder model
         hidden = torch.cat([
-            self.in_mlps[0](pitch),
-            self.in_mlps[1](loudness),
+            self.f0_mlp(pitch),
+            self.loudness_mlp(loudness),
         ], -1)
         hidden = torch.cat([self.gru(hidden)[0], pitch, loudness], -1)
         hidden = self.out_mlp(hidden)
 
         # harmonic synth
-        param = self.proj_matrices[0](hidden)
+        param = self.harmonic_proj(hidden)
         amplitudes = param[..., :1]
         harmonic_distribution = param[..., 1:]
 
@@ -158,14 +158,16 @@ class DDSP(nn.Module):
                                                              pitch)
         harmonic = self.harmonic_synth(**harmonic_ctrls)
 
-        # noise part
-        magnitudes = self.proj_matrices[1](hidden)
+        # filtered noise
+        magnitudes = self.noise_proj(hidden)
         noise_ctrls = self.noise_synth.get_controls(magnitudes)
         noise = self.noise_synth(**noise_ctrls)
 
+        # add signals
+        # question: would it make sense to make this a learnable weighted sum?
         signal = harmonic + noise
 
-        #reverb part
+        # add reverb
         if self.has_reverb:
             signal = self.reverb(signal)
 
@@ -197,7 +199,7 @@ class DDSP(nn.Module):
         amplitudes = param[..., :1]
         harmonic_distribution = param[..., 1:]
 
-        harmonic_ctrls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution, 
+        harmonic_ctrls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution,
                                                           pitch)
         harmonic = self.harmonic_synth(**harmonic_ctrls)
 

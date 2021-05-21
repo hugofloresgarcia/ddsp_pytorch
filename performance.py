@@ -16,7 +16,7 @@ args.parse_args()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 model = torch.jit.load(args.MODEL).eval().to(device)
-sr = model.ddsp.sampling_rate
+sr = model.ddsp.sample_rate
 
 N = 2**(math.ceil(math.log2(sr)))
 x = torch.randn(1, N, 1).to(device)

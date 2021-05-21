@@ -62,13 +62,13 @@ def reconstruction_report(writer: SummaryWriter, config: dict,
 
     # we get a multi-scale spectrogram, but we want to only access 1
     scale_idx = len(config['train']['scales'])//2
-    sr = config['preprocess']['sampling_rate']
+    sr = config['preprocess']['sample_rate']
     n_fft = config['train']['scales'][IDX]
     hop = config['train']['overlap']
 
     original_stft = tonp(original_stft[IDX][scale_idx])
     original_stft = stft_to_mel(original_stft, sr, n_fft, hop)
-    axes[1][0].set_title('Original')
+    axes[0][0].set_title('Original')
     plot_spec(original_stft, axes[0][0])
 
     reconstructed_stft = tonp(reconstructed_stft[IDX][scale_idx])

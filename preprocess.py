@@ -15,16 +15,16 @@ def get_files(data_location, extension, **kwargs):
     return list(pathlib.Path(data_location).rglob(f"*.{extension}"))
 
 
-def preprocess(f, sampling_rate, block_size, signal_length, oneshot, **kwargs):
-    x, sr = li.load(str(f), sampling_rate)
+def preprocess(f, sample_rate, block_size, signal_length, oneshot, **kwargs):
+    x, sr = li.load(str(f), sample_rate)
     N = (signal_length - len(x) % signal_length) % signal_length
     x = np.pad(x, (0, N))
 
     if oneshot:
         x = x[..., :signal_length]
 
-    pitch = extract_pitch(x, sampling_rate, block_size)
-    loudness = extract_loudness(x, sampling_rate, block_size)
+    pitch = extract_pitch(x, sample_rate, block_size)
+    loudness = extract_loudness(x, sample_rate, block_size)
 
     x = x.reshape(-1, signal_length)
     pitch = pitch.reshape(x.shape[0], -1)

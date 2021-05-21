@@ -11,7 +11,7 @@ with open("config.yaml", "r") as config:
     config = SimpleNamespace(**yaml.safe_load(config))
 
 sr, x = wavfile.read(config.data["data_location"])
-assert sr == config.preprocess["sampling_rate"]
+assert sr == config.preprocess["sample_rate"]
 
 n_signal = config.preprocess["signal_length"]
 pad = (n_signal - (x.shape[0] % n_signal)) % n_signal

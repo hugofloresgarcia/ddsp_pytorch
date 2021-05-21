@@ -3,7 +3,7 @@ data:
   extension: "mp3"
 
 preprocess:
-  sampling_rate: &samplingrate 48000
+  sample_rate: &samplingrate 48000
   signal_length: &signallength 192000
   block_size: &blocksize 512 # must be a power of 2 if using realtime
 
@@ -14,7 +14,7 @@ model:
   hidden_size: 512
   n_harmonic: 64
   n_bands: 65
-  sampling_rate: *samplingrate
+  sample_rate: *samplingrate
   block_size: *blocksize
   has_reverb: True
 

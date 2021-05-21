@@ -2,7 +2,7 @@ import torch
 import yaml
 from effortless_config import Config
 from os import path, makedirs, system
-from ddsp.model import DDSP
+from ddsp.model import DDSPDecoder
 import soundfile as sf
 from preprocess import get_files
 
@@ -43,7 +43,7 @@ class ScriptDDSP(torch.nn.Module):
 with open(path.join(args.RUN, "config.yaml"), "r") as config:
     config = yaml.safe_load(config)
 
-ddsp = DDSP(**config["model"])
+ddsp = DDSPDecoder(**config["model"])
 
 state = ddsp.state_dict()
 pretrained = torch.load(path.join(args.RUN, "state.pth"), map_location="cpu")
@@ -68,7 +68,7 @@ impulse = ddsp.reverb.build_impulse().reshape(-1).numpy()
 sf.write(
     path.join(args.OUT_DIR, f"ddsp_{name}_impulse.wav"),
     impulse,
-    config["preprocess"]["sampling_rate"],
+    config["preprocess"]["sample_rate"],
 )
 
 with open(

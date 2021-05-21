@@ -2,7 +2,7 @@ import torch
 import ddsp
 from torch.utils.tensorboard import SummaryWriter
 import yaml
-from ddsp.model import DDSP
+from ddsp.model import DDSPDecoder
 from effortless_config import Config
 from os import path
 from preprocess import Dataset
@@ -34,7 +34,7 @@ args.parse_args()
 with open(args.CONFIG, "r") as config:
     config = yaml.safe_load(config)
 
-model = DDSP(**config["model"]).to(args.DEVICE)
+model = DDSPDecoder(**config["model"]).to(args.DEVICE)
 
 dataset = Dataset(config["preprocess"]["out_dir"])
 
@@ -147,9 +147,9 @@ for e in pbar:
         writer.add_audio('sig',
                          sig[ddsp.utils.IDX],
                          global_step=e,
-                         sample_rate=config['preprocess']["sampling_rate"])
+                         sample_rate=config['preprocess']["sample_rate"])
         writer.add_audio('rec',
                          rec[ddsp.utils.IDX],
                          global_step=e,
-                         sample_rate=config['preprocess']["sampling_rate"])
+                         sample_rate=config['preprocess']["sample_rate"])
 
