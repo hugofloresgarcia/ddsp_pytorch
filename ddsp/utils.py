@@ -86,7 +86,7 @@ def reconstruction_report(writer: SummaryWriter, config: dict,
     axes[1][1].set_title('Loudness')
     plot_sig(midi, axes[1][1])
 
-    noise_filter = tonp(noise_filter[IDX])
+    noise_filter = tonp(noise_filter[IDX].T)
     axes[0][2].set_title('Noise Filter')
     plot_spec(noise_filter, axes[0][2], amp_to_db=False)
 

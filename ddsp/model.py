@@ -53,6 +53,8 @@ class HarmonicSynth(nn.Module):
                                     (batch, frame, harmonic)
             f0: fundamental frequency
         """
+        amplitudes = scale_function(amplitudes)
+        harmonic_distribution = scale_function(harmonic_distribution)
 
         harmonic_distribution = remove_above_nyquist(
             harmonic_distribution,
@@ -80,6 +82,33 @@ class HarmonicSynth(nn.Module):
 
         return sig
 
+class FilteredNoise(nn.Module):
+
+    def __init__(self, block_size: int, window_size: int,
+                 initial_bias: int = -5.0):
+        super().__init__()
+        self.block_size = block_size
+        self.window_size = window_size
+        self.initial_bias = initial_bias
+
+    def get_controls(self, magnitudes):
+        return {'magnitudes': scale_function(magnitudes + self.initial_bias)}
+
+    def forward(self, magnitudes):
+        impulse = amp_to_impulse_response(magnitudes, self.block_size)
+        # create a noise vector N(0, 1)
+        noise = torch.rand(
+            impulse.shape[0],
+            impulse.shape[1],
+            self.block_size,
+        ).to(impulse) * 2 - 1
+
+        noise = fft_convolve(noise, impulse).contiguous()
+        noise = noise.reshape(noise.shape[0], -1, 1)
+
+        return noise
+
+
 class DDSP(nn.Module):
     """
     DDSP Decoder with no encoded Z dimension.
@@ -103,6 +132,8 @@ class DDSP(nn.Module):
 
         self.harmonic_synth = HarmonicSynth(block_size=block_size,
                                             sample_rate=sampling_rate)
+        self.noise_synth = FilteredNoise(block_size=block_size,
+                                         window_size=n_bands)
 
         self.has_reverb = has_reverb
         self.reverb = Reverb(sampling_rate, sampling_rate)
@@ -118,10 +149,8 @@ class DDSP(nn.Module):
         hidden = torch.cat([self.gru(hidden)[0], pitch, loudness], -1)
         hidden = self.out_mlp(hidden)
 
-        # harmonic part
-        # breakpoint()
-        param = scale_function(self.proj_matrices[0](hidden))
-
+        # harmonic synth
+        param = self.proj_matrices[0](hidden)
         amplitudes = param[..., :1]
         harmonic_distribution = param[..., 1:]
 
@@ -130,18 +159,9 @@ class DDSP(nn.Module):
         harmonic = self.harmonic_synth(**harmonic_ctrls)
 
         # noise part
-        param = scale_function(self.proj_matrices[1](hidden) - 5)
-
-        impulse = amp_to_impulse_response(param, self.block_size)
-        # create a noise vector N(0, 1)
-        noise = torch.rand(
-            impulse.shape[0],
-            impulse.shape[1],
-            self.block_size,
-        ).to(impulse) * 2 - 1
-
-        noise = fft_convolve(noise, impulse).contiguous()
-        noise = noise.reshape(noise.shape[0], -1, 1)
+        magnitudes = self.proj_matrices[1](hidden)
+        noise_ctrls = self.noise_synth.get_controls(magnitudes)
+        noise = self.noise_synth(**noise_ctrls)
 
         signal = harmonic + noise
 
@@ -153,8 +173,7 @@ class DDSP(nn.Module):
             'signal': signal,
             'noise': noise,
             'harmonic_audio': harmonic,
-            'noise_filter': torch.fft.rfft(impulse).abs(),
-            'reverb_impulse': self.reverb.build_impulse(),
+            'noise_magnitudes': noise_ctrls['magnitudes'],
         }
 
         output.update(harmonic_ctrls)
@@ -174,26 +193,18 @@ class DDSP(nn.Module):
         hidden = self.out_mlp(hidden)
 
         # harmonic part
-        param = scale_function(self.proj_matrices[0](hidden))
-
+        param = self.proj_matrices[0](hidden)
         amplitudes = param[..., :1]
         harmonic_distribution = param[..., 1:]
 
-        harmonic_ctrls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution, pitch)
+        harmonic_ctrls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution, 
+                                                          pitch)
         harmonic = self.harmonic_synth(**harmonic_ctrls)
 
         # noise part
-        param = scale_function(self.proj_matrices[1](hidden) - 5)
-
-        impulse = amp_to_impulse_response(param, self.block_size)
-        noise = torch.rand(
-            impulse.shape[0],
-            impulse.shape[1],
-            self.block_size,
-        ).to(impulse) * 2 - 1
-
-        noise = fft_convolve(noise, impulse).contiguous()
-        noise = noise.reshape(noise.shape[0], -1, 1)
+        magnitudes = self.proj_matrices[1](hidden)
+        noise_ctrls = self.noise_synth.get_controls(magnitudes)
+        noise = self.noise_synth(**noise_ctrls)
 
         signal = harmonic + noise
 

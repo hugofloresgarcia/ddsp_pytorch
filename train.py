@@ -139,7 +139,7 @@ for e in pbar:
                                                      original_stft=sig_stft, 
                                                      reconstructed_stft=rec_stft, 
                                                      harmonic_amps=output['harmonic_distribution'],
-                                                     noise_filter=output['noise_filter'],
+                                                     noise_filter=output['noise_magnitudes'],
                                                      f0=p, loudness=l, tag='report', 
                                                      step=e)
 
