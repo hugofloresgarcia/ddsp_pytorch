@@ -125,9 +125,9 @@ class DDSP(nn.Module):
         amplitudes = param[..., :1]
         harmonic_distribution = param[..., 1:]
 
-        harmonic_controls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution,
+        harmonic_ctrls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution,
                                                              pitch)
-        harmonic = self.harmonic_synth(**harmonic_controls)
+        harmonic = self.harmonic_synth(**harmonic_ctrls)
 
         # noise part
         param = scale_function(self.proj_matrices[1](hidden) - 5)
@@ -157,7 +157,7 @@ class DDSP(nn.Module):
             'reverb_impulse': self.reverb.build_impulse(),
         }
 
-        output.update(harmonic_controls)
+        output.update(harmonic_ctrls)
 
         return output
 
@@ -176,29 +176,11 @@ class DDSP(nn.Module):
         # harmonic part
         param = scale_function(self.proj_matrices[0](hidden))
 
-        total_amp = param[..., :1]
-        amplitudes = param[..., 1:]
+        amplitudes = param[..., :1]
+        harmonic_distribution = param[..., 1:]
 
-        amplitudes = remove_above_nyquist(
-            amplitudes,
-            pitch,
-            self.sampling_rate,
-        )
-        amplitudes /= amplitudes.sum(-1, keepdim=True)
-        amplitudes *= total_amp
-
-        amplitudes = upsample(amplitudes, self.block_size)
-        pitch = upsample(pitch, self.block_size)
-
-        n_harmonic = amplitudes.shape[-1]
-        omega = torch.cumsum(2 * math.pi * pitch / self.sampling_rate, 1)
-
-        omega = omega + self.phase
-        self.phase.copy_(omega[0, -1, 0] % (2 * math.pi))
-
-        omegas = omega * torch.arange(1, n_harmonic + 1).to(omega)
-
-        harmonic = (torch.sin(omegas) * amplitudes).sum(-1, keepdim=True)
+        harmonic_ctrls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution, pitch)
+        harmonic = self.harmonic_synth(**harmonic_ctrls)
 
         # noise part
         param = scale_function(self.proj_matrices[1](hidden) - 5)
