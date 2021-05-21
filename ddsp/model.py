@@ -5,6 +5,68 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 
+
+class GRUDecoder(nn.Module):
+
+    def __init__(self, hidden_size: int, z_dim: int = None):
+        """ddsp GRU decoder
+
+        Args:
+            hidden_size (int): gru hidden size. real hidden size will be 2*hidden_size 
+                             without Z and 3*hidden_size with Z
+            z_dim (int, optional): dimensionality of Z. If None, no Z is added.  
+        """
+        super().__init__()
+        self.register_buffer("cache_gru", torch.zeros(1, 1, hidden_size))
+
+        N_LAYERS = 3
+
+        # projections from f0 and loudness to GRU
+        self.f0_mlp = ddsp.mlp(in_size=1,
+                               hidden_size=hidden_size,
+                               n_layers=N_LAYERS)
+        self.loudness_mlp = ddsp.mlp(in_size=1,
+                                     hidden_size=hidden_size,
+                                     n_layers=N_LAYERS)
+
+        # add a z projection if needed
+        self.add_z = z_dim is not None
+        if self.add_z:
+            self.z_mlp = ddsp.mlp(z_dim, hidden_size, N_LAYERS)
+
+        # GRU decoder
+        # add an extra hidden block if we're adding Z
+        num_hiddens = 2 if not self.add_z else 3
+        self.gru = ddsp.gru(num_hiddens, hidden_size)
+        self.out_mlp = ddsp.mlp(hidden_size + 2, hidden_size, N_LAYERS)
+
+    def forward(self, f0, loudness, z=None, realtime=False):
+        hidden = torch.cat([
+            self.f0_mlp(f0),
+            self.loudness_mlp(loudness),
+        ], -1)
+
+        # concatenate z if we need to
+        if self.add_z:
+            assert z is not None
+            hidden = torch.cat([
+                hidden,
+                self.z_mlp(z)
+            ], -1)
+
+        # TODO: why are we passing f0 and loudness through a skip conn? (here)
+        if realtime:
+            gru_out, cache = self.gru(hidden, self.cache_gru)
+            self.cache_gru.copy_(cache)
+
+            hidden = torch.cat([gru_out, f0, loudness], -1)
+            hidden = self.out_mlp(hidden)
+        else:
+            hidden = torch.cat([self.gru(hidden)[0], f0, loudness], -1)
+            hidden = self.out_mlp(hidden)
+
+        return hidden
+
 class DDSPDecoder(nn.Module):
     """
     DDSP GRU Decoder with no encoded Z dimension.
@@ -24,31 +86,26 @@ class DDSPDecoder(nn.Module):
                                      n_layers=3)
 
         # GRU decoder
-        self.gru = ddsp.gru(2, hidden_size)
-        self.out_mlp = ddsp.mlp(hidden_size + 2, hidden_size, 3)
+        self.decoder = GRUDecoder(hidden_size=hidden_size, z_dim=None)
 
+        # projections to harmonics and noise
         self.harmonic_proj = nn.Linear(hidden_size, n_harmonic + 1)
         self.noise_proj = nn.Linear(hidden_size, n_bands)
 
+        # synths
         self.harmonic_synth = HarmonicSynth(block_size=block_size,
                                             sample_rate=sample_rate)
         self.noise_synth = FilteredNoise(block_size=block_size,
                                          window_size=n_bands)
 
+        # reverb
         self.has_reverb = has_reverb
         self.reverb = Reverb(sample_rate, sample_rate)
 
-        self.register_buffer("cache_gru", torch.zeros(1, 1, hidden_size))
         self.register_buffer("phase", torch.zeros(1))
 
     def forward(self, f0, loudness):
-        # forward pass through decoder model
-        hidden = torch.cat([
-            self.f0_mlp(f0),
-            self.loudness_mlp(loudness),
-        ], -1)
-        hidden = torch.cat([self.gru(hidden)[0], f0, loudness], -1)
-        hidden = self.out_mlp(hidden)
+        hidden = self.decoder(f0, loudness)
 
         # harmonic synth
         param = self.harmonic_proj(hidden)
@@ -85,16 +142,7 @@ class DDSPDecoder(nn.Module):
 
     def realtime_forward(self, f0, loudness):
         # forward pass through decoder model
-        hidden = torch.cat([
-            self.f0_mlp(f0),
-            self.loudness_mlp(loudness),
-        ], -1)
-
-        gru_out, cache = self.gru(hidden, self.cache_gru)
-        self.cache_gru.copy_(cache)
-
-        hidden = torch.cat([gru_out, f0, loudness], -1)
-        hidden = self.out_mlp(hidden)
+        hidden = self.decoder(f0, loudness, realtime=True)
 
         # harmonic part
         param = self.proj_matrices[0](hidden)
