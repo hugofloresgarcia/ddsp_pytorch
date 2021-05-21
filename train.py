@@ -148,8 +148,8 @@ for e in pbar:
                          sig[ddsp.utils.IDX],
                          global_step=e,
                          sample_rate=config['preprocess']["sampling_rate"])
-        writer.add_audio('rec (amplified)',
-                         rec[ddsp.utils.IDX] * 10,
+        writer.add_audio('rec',
+                         rec[ddsp.utils.IDX],
                          global_step=e,
                          sample_rate=config['preprocess']["sampling_rate"])
 

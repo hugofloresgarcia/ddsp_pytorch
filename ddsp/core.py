@@ -141,21 +141,28 @@ def harmonic_synth(f0, amplitudes, sampling_rate):
 
 
 def amp_to_impulse_response(amp, target_size):
+    """ 
+    converts a frequency-domain filter response
+    into a time-domain impulse response?
+    """ 
+    # convert to complex  
     amp = torch.stack([amp, torch.zeros_like(amp)], -1)
     amp = torch.view_as_complex(amp)
-    amp = fft.irfft(amp)
 
-    filter_size = amp.shape[-1]
+    # from freq domain to time domain
+    impulse = fft.irfft(amp)
 
-    amp = torch.roll(amp, filter_size // 2, -1)
-    win = torch.hann_window(filter_size, dtype=amp.dtype, device=amp.device)
+    filter_size = impulse.shape[-1]
 
-    amp = amp * win
+    impulse = torch.roll(impulse, filter_size // 2, -1)
+    win = torch.hann_window(filter_size, dtype=impulse.dtype, device=impulse.device)
 
-    amp = nn.functional.pad(amp, (0, int(target_size) - int(filter_size)))
-    amp = torch.roll(amp, -filter_size // 2, -1)
+    impulse = impulse * win
 
-    return amp
+    impulse = nn.functional.pad(impulse, (0, int(target_size) - int(filter_size)))
+    impulse = torch.roll(impulse, -filter_size // 2, -1)
+
+    return impulse
 
 
 def fft_convolve(signal, kernel):

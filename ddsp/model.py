@@ -36,10 +36,18 @@ class Reverb(nn.Module):
 
         return x
 
+# class HarmonicSynth(nn.Module):
+
+#     def __init__
 
 class DDSP(nn.Module):
-    def __init__(self, hidden_size, n_harmonic, n_bands, sampling_rate,
-                 block_size, has_reverb: bool):
+    """
+    DDSP Decoder with no encoded Z dimension.
+
+    This model uses only pitch and loudness as input. 
+    """
+    def __init__(self, hidden_size: int, n_harmonic: int, n_bands: int, sampling_rate: int,
+                 block_size: int, has_reverb: bool):
         super().__init__()
         self.register_buffer("sampling_rate", torch.tensor(sampling_rate))
         self.register_buffer("block_size", torch.tensor(block_size))

@@ -1,6 +1,6 @@
 data:
-  data_location: "./data/nsynth-patch/train/mallet_acoustic_026"
-  extension: "wav"
+  data_location: "./data/violin"
+  extension: "mp3"
 
 preprocess:
   sampling_rate: &samplingrate 48000
@@ -8,7 +8,7 @@ preprocess:
   block_size: &blocksize 512 # must be a power of 2 if using realtime
 
   oneshot: false # crop every audio file to exactly signal length
-  out_dir: "./cache/nsynth-patch/train/mallet_acoustic_026"
+  out_dir: "./cache/violin"
 
 model:
   hidden_size: 512
