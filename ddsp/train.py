@@ -88,11 +88,11 @@ class DDSPTask(pl.LightningModule):
         self.log(f"reverb_wet/{stage}", self.model.reverb.wet.item())
 
         # log the audio to tb (instead of writing to file)
-        writer.add_audio('sig',
+        writer.add_audio(f'sig/{stage}',
                          output['sig'][IDX],
                          global_step=self.global_step,
                          sample_rate=self.config['preprocess']["sample_rate"])
-        writer.add_audio('rec',
+        writer.add_audio(f'rec/{stage}',
                          output['rec'][IDX],
                          global_step=self.global_step,
                          sample_rate=self.config['preprocess']["sample_rate"])
