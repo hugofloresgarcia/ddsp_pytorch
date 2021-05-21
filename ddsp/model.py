@@ -36,9 +36,49 @@ class Reverb(nn.Module):
 
         return x
 
-# class HarmonicSynth(nn.Module):
+class HarmonicSynth(nn.Module):
 
-#     def __init__
+    def __init__(self, block_size: int,
+                 sample_rate: int):
+        super().__init__()
+        self.block_size = block_size
+        self.sample_rate = sample_rate
+
+    def get_controls(self, amplitudes, harmonic_distribution, f0):
+        """gets control parameters for the synthesizer.
+
+        Args:
+            amplitudes: frame-wise amplitudes (batch, frame, 1)
+            harmonic_distribution: frame-wise harmonic distribution 
+                                    (batch, frame, harmonic)
+            f0: fundamental frequency
+        """
+
+        harmonic_distribution = remove_above_nyquist(
+            harmonic_distribution,
+            f0,
+            self.sample_rate,
+        )
+        harmonic_distribution /= harmonic_distribution.sum(-1, keepdim=True)
+
+        return {
+                'f0': f0,
+                'harmonic_distribution': harmonic_distribution,
+                'amplitudes': amplitudes
+            }
+
+    def forward(self, amplitudes, harmonic_distribution, f0):
+        """ forward pass through synthesizer 
+        (must run get_controls first)
+        """
+        harmonic_distribution *= amplitudes
+        harmonic_distribution = upsample(harmonic_distribution,
+                                         self.block_size)
+        f0 = upsample(f0, self.block_size)
+
+        sig = harmonic_synth(f0, harmonic_distribution, self.sample_rate)
+
+        return sig
 
 class DDSP(nn.Module):
     """
@@ -61,6 +101,9 @@ class DDSP(nn.Module):
             nn.Linear(hidden_size, n_bands),
         ])
 
+        self.harmonic_synth = HarmonicSynth(block_size=block_size,
+                                            sample_rate=sampling_rate)
+
         self.has_reverb = has_reverb
         self.reverb = Reverb(sampling_rate, sampling_rate)
 
@@ -76,23 +119,15 @@ class DDSP(nn.Module):
         hidden = self.out_mlp(hidden)
 
         # harmonic part
+        # breakpoint()
         param = scale_function(self.proj_matrices[0](hidden))
 
-        total_amp = param[..., :1]
-        amplitudes = param[..., 1:]
+        amplitudes = param[..., :1]
+        harmonic_distribution = param[..., 1:]
 
-        amplitudes = remove_above_nyquist(
-            amplitudes,
-            pitch,
-            self.sampling_rate,
-        )
-        amplitudes /= amplitudes.sum(-1, keepdim=True)
-        amplitudes *= total_amp
-
-        amplitudes = upsample(amplitudes, self.block_size)
-        pitch = upsample(pitch, self.block_size)
-
-        harmonic = harmonic_synth(pitch, amplitudes, self.sampling_rate)
+        harmonic_controls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution,
+                                                             pitch)
+        harmonic = self.harmonic_synth(**harmonic_controls)
 
         # noise part
         param = scale_function(self.proj_matrices[1](hidden) - 5)
@@ -115,13 +150,14 @@ class DDSP(nn.Module):
             signal = self.reverb(signal)
 
         output = {
-            'signal': signal, 
-            'noise': noise, 
+            'signal': signal,
+            'noise': noise,
             'harmonic_audio': harmonic,
-            'harmonic_amps': amplitudes, 
             'noise_filter': torch.fft.rfft(impulse).abs(),
             'reverb_impulse': self.reverb.build_impulse(),
         }
+
+        output.update(harmonic_controls)
 
         return output
 

@@ -138,7 +138,7 @@ for e in pbar:
         fig, axes = ddsp.utils.reconstruction_report(writer=writer, config=config, 
                                                      original_stft=sig_stft, 
                                                      reconstructed_stft=rec_stft, 
-                                                     harmonic_amps=output['harmonic_amps'],
+                                                     harmonic_amps=output['harmonic_distribution'],
                                                      noise_filter=output['noise_filter'],
                                                      f0=p, loudness=l, tag='report', 
                                                      step=e)
