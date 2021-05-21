@@ -1,19 +1,17 @@
 import yaml
 import pathlib
+from pathlib import Path
 import librosa as li
-from ddsp.core import extract_loudness, extract_pitch
+import ddsp
 from effortless_config import Config
 import numpy as np
 from tqdm import tqdm
 import numpy as np
 from os import makedirs, path
 import torch
-from scipy.io import wavfile
 
-
-def get_files(data_location, extension, **kwargs):
+def get_files(data_location, extension):
     return list(pathlib.Path(data_location).rglob(f"*.{extension}"))
-
 
 def preprocess(f, sample_rate, block_size, signal_length, oneshot, **kwargs):
     x, sr = li.load(str(f), sample_rate)
@@ -23,15 +21,14 @@ def preprocess(f, sample_rate, block_size, signal_length, oneshot, **kwargs):
     if oneshot:
         x = x[..., :signal_length]
 
-    pitch = extract_pitch(x, sample_rate, block_size)
-    loudness = extract_loudness(x, sample_rate, block_size)
+    pitch = ddsp.extract_pitch(x, sample_rate, block_size)
+    loudness = ddsp.extract_loudness(x, sample_rate, block_size)
 
     x = x.reshape(-1, signal_length)
     pitch = pitch.reshape(x.shape[0], -1)
     loudness = loudness.reshape(x.shape[0], -1)
 
     return x, pitch, loudness
-
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, out_dir):
@@ -49,16 +46,10 @@ class Dataset(torch.utils.data.Dataset):
         l = torch.from_numpy(self.loudness[idx])
         return s, p, l
 
-
-def main():
-    class args(Config):
-        CONFIG = "config.yaml"
-
-    args.parse_args()
-    with open(args.CONFIG, "r") as config:
-        config = yaml.safe_load(config)
-
-    files = get_files(**config["data"])
+def preprocess_folder(root_dir, partition, config):
+    assert (root_dir / partition).exists(), f'{root_dir / partition} does not exist'
+    files = get_files(data_location=root_dir / partition,
+                      extension=config['data']['extension'])
     pb = tqdm(files)
 
     signals = []
@@ -76,13 +67,26 @@ def main():
     pitchs = np.concatenate(pitchs, 0).astype(np.float32)
     loudness = np.concatenate(loudness, 0).astype(np.float32)
 
-    out_dir = config["preprocess"]["out_dir"]
-    makedirs(out_dir, exist_ok=True)
+    out_dir = Path(config["preprocess"]["out_dir"]) / partition
+    makedirs(out_dir,  exist_ok=True)
 
     np.save(path.join(out_dir, "signals.npy"), signals)
     np.save(path.join(out_dir, "pitchs.npy"), pitchs)
     np.save(path.join(out_dir, "loudness.npy"), loudness)
 
+def main():
+    class args(Config):
+        CONFIG = "config.yaml"
+
+    args.parse_args()
+    with open(args.CONFIG, "r") as config:
+        config = yaml.safe_load(config)
+
+    root_dir = Path(config['data']['data_location'])
+    partitions = ['train', 'validation']
+
+    for partition in partitions:
+        preprocess_folder(root_dir, partition, config)
 
 if __name__ == "__main__":
     main()
