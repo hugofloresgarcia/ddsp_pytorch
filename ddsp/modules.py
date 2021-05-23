@@ -50,8 +50,8 @@ class HarmonicSynth(nn.Module):
                                     (batch, frame, harmonic)
             f0: fundamental frequency
         """
-        amplitudes = ddsp.scale_function(amplitudes)
-        harmonic_distribution = ddsp.scale_function(harmonic_distribution)
+        amplitudes = ddsp.exp_sigmoid(amplitudes)
+        harmonic_distribution = ddsp.exp_sigmoid(harmonic_distribution)
 
         harmonic_distribution = ddsp.remove_above_nyquist(
             harmonic_distribution,
@@ -110,7 +110,7 @@ class FilteredNoise(nn.Module):
 
     def get_controls(self, magnitudes):
         return {
-            'magnitudes': ddsp.scale_function(magnitudes + self.initial_bias)
+            'magnitudes': ddsp.exp_sigmoid(magnitudes + self.initial_bias)
         }
 
     def forward(self, magnitudes):

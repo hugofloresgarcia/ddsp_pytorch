@@ -188,3 +188,67 @@ class DDSPDecoder(nn.Module):
         fig.tight_layout()
 
         return fig
+
+class DFMDecoder(nn.Module):
+    def __init__(self, hidden_size: int, n_operators: int, sample_rate: int,
+                 block_size: int, has_reverb: bool):
+        super().__init__()
+        self.register_buffer("sample_rate", torch.tensor(sample_rate))
+        self.register_buffer("block_size", torch.tensor(block_size))
+
+        # GRU decoder
+        self.decoder = GRUDecoder(hidden_size=hidden_size, z_dim=None)
+
+        # fm synth
+        self.fm_synth = ddsp.fm.FMSynth(hidden_size, block_size, sample_rate,
+                                n_operators)
+
+        # reverb
+        self.has_reverb = has_reverb
+        self.reverb = Reverb(sample_rate, sample_rate)
+
+        self.register_buffer("phase", torch.zeros(1))
+
+    def forward(self, f0, loudness):
+        hidden = self.decoder(f0, loudness)
+        synth = self.fm_synth.forward(f0, hidden)
+
+        output = {
+            'f0': f0,
+            'loudness': loudness,
+            'signal': synth['signal'],
+            'amps': synth['amps'],
+            'ratios': synth['ratios']
+        }
+        return output
+
+    def reconstruction_report(self,
+                              original,
+                              reconstructed,
+                              config: dict,
+                              output: dict,
+                              index=0):
+        fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(12, 5))
+
+        scale_idx = len(config['train']['scales']) // 2
+        sr = config['preprocess']['sample_rate']
+        n_fft = config['train']['scales'][index]
+        hop = config['train']['overlap']
+
+        original = ddsp.utils.tonp(original[index][scale_idx])
+        original = ddsp.utils.stft_to_mel(original, sr, n_fft, hop)
+        axes[0][0].set_title('Original')
+        ddsp.utils.plot_spec(original, axes[0][0])
+
+        reconstructed = ddsp.utils.tonp(reconstructed[index][scale_idx])
+        reconstructed = ddsp.utils.stft_to_mel(reconstructed, sr, n_fft, hop)
+        axes[1][0].set_title('Reconstruction')
+        ddsp.utils.plot_spec(reconstructed, axes[1][0])
+
+        ddsp.utils.plot_f0(axes[0][1], output['f0'], index)
+        ddsp.utils.plot_loudness(axes[1][1], output['loudness'], index)
+
+        fig.suptitle('reconstruction report')
+        fig.tight_layout()
+
+        return fig

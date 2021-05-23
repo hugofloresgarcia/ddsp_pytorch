@@ -82,8 +82,8 @@ def remove_above_nyquist(amplitudes, f0, sample_rate):
     return amplitudes * aa
 
 
-def scale_function(x):
-    return 2 * torch.sigmoid(x)**(math.log(10)) + 1e-7
+def exp_sigmoid(x, exponent=10, max_value=2.0, threshold=1e-7):
+    return max_value * torch.sigmoid(x)**(math.log(exponent)) + threshold
 
 
 def extract_loudness(signal, sample_rate, block_size, n_fft=2048):

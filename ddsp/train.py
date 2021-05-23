@@ -16,6 +16,8 @@ def load_model(name: str, config: dict):
     """
     if name == "single-inst-decoder":
         model = ddsp.models.DDSPDecoder(**config["model"]["kwargs"])
+    elif name == "single-inst-fm":
+        model = ddsp.models.DFMDecoder(**config["model"]["kwargs"])
     else:
         raise ValueError(f'invalid model name: {name}')
     return model
