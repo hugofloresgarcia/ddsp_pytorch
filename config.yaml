@@ -1,9 +1,9 @@
 data:
-  data_location: "./data/violin"
+  data_location: "./data/violin/train"
   extension: "mp3"
 
 preprocess:
-  sample_rate: &samplingrate 48000
+  sample_rate: &sample_rate 16000
   signal_length: &signallength 192000
   block_size: &blocksize 512 # must be a power of 2 if using realtime
 
@@ -11,13 +11,22 @@ preprocess:
   out_dir: "./cache/violin"
 
 model:
-  hidden_size: 512
-  n_harmonic: 64
-  n_bands: 65
-  sample_rate: *samplingrate
-  block_size: *blocksize
-  has_reverb: True
+  name: "single-inst-decoder"
+  kwargs:
+    hidden_size: 512
+    n_harmonic: 64
+    n_bands: 65
+    sample_rate: *sample_rate
+    block_size: *blocksize
+    has_reverb: True
 
 train:
   scales: [4096,2048, 1024, 512, 256, 128]
   overlap: .75
+  start_lr: 1.0e-3
+  stop_lr: 1.0e-4
+  decay_over: 400000
+  root: "runs"
+  steps: 500000
+  batch: 16
+  log_interval: 1

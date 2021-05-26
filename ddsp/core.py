@@ -7,6 +7,15 @@ import crepe
 import math
 
 
+def multiscale_spec_loss(ori_stft, rec_stft):
+    loss = 0
+    for s_x, s_y in zip(ori_stft, rec_stft):
+        lin_loss = (s_x - s_y).abs().mean()
+        log_loss = (safe_log(s_x) - safe_log(s_y)).abs().mean()
+        loss = loss + lin_loss + log_loss
+    return loss
+
+
 def safe_log(x):
     return torch.log(x + 1e-7)
 
@@ -144,8 +153,8 @@ def amp_to_impulse_response(amp, target_size):
     """ 
     converts a frequency-domain filter response
     into a time-domain impulse response?
-    """ 
-    # convert to complex  
+    """
+    # convert to complex
     amp = torch.stack([amp, torch.zeros_like(amp)], -1)
     amp = torch.view_as_complex(amp)
 
@@ -155,11 +164,14 @@ def amp_to_impulse_response(amp, target_size):
     filter_size = impulse.shape[-1]
 
     impulse = torch.roll(impulse, filter_size // 2, -1)
-    win = torch.hann_window(filter_size, dtype=impulse.dtype, device=impulse.device)
+    win = torch.hann_window(filter_size,
+                            dtype=impulse.dtype,
+                            device=impulse.device)
 
     impulse = impulse * win
 
-    impulse = nn.functional.pad(impulse, (0, int(target_size) - int(filter_size)))
+    impulse = nn.functional.pad(impulse,
+                                (0, int(target_size) - int(filter_size)))
     impulse = torch.roll(impulse, -filter_size // 2, -1)
 
     return impulse
