@@ -22,3 +22,5 @@ train:
   scales: [4096,2048, 1024, 512, 256, 128]
   overlap: .75
   batch: 16
+  lr: 1.0e-3
+  steps: 500000

@@ -16,15 +16,10 @@ import librosa as li
 LOG_INTERVAL = 1 # in epochs
 VAL_INTERVAL = 10
 
-
 class args(Config):
     CONFIG = "config.yaml"
     NAME = "debug"
     ROOT = "runs"
-    STEPS = 500000
-    START_LR = 1e-3
-    STOP_LR = 1e-4
-    DECAY_OVER = 400000
     DEVICE = 0 if torch.cuda.is_available() else None
 
 args.parse_args()
@@ -49,13 +44,13 @@ writer = SummaryWriter(path.join(args.ROOT, args.NAME), flush_secs=20)
 with open(path.join(args.ROOT, args.NAME, "config.yaml"), "w") as out_config:
     yaml.safe_dump(config, out_config)
 
-opt = torch.optim.Adam(model.parameters(), lr=args.START_LR)
+opt = torch.optim.Adam(model.parameters(), lr=config['train']['lr'])
 
 best_loss = float("inf")
 mean_loss = 0
 n_element = 0
 step = 0
-epochs = int(np.ceil(args.STEPS / len(train_loader)))
+epochs = int(np.ceil(config['train']['steps'] / len(train_loader)))
 
 def multiscale_spec_loss(ori_stft, rec_stft):
     loss = 0
@@ -102,7 +97,7 @@ def val_loop(model, dataloader, config, step):
     pbar = tqdm(enumerate(dataloader), total=len(dataloader))
     for index, batch in pbar:
         output = _main_step(model, batch)
-        
+
     ddsp.utils.log_step(model, writer, output, 
                         'val', step, config)
 
