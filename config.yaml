@@ -1,6 +1,6 @@
 data:
-  data_location: "./data/bass_acoustic_000/train"
-  extension: "mp3"
+  data_location: "./data/bass_acoustic_000"
+  extension: "wav"
 
 preprocess:
   sample_rate: &samplingrate 48000

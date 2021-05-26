@@ -27,7 +27,6 @@ class args(Config):
     DECAY_OVER = 400000
     DEVICE = 0 if torch.cuda.is_available() else None
 
-
 args.parse_args()
 
 with open(args.CONFIG, "r") as config:
