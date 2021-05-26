@@ -8,7 +8,7 @@ preprocess:
   block_size: &blocksize 512 # must be a power of 2 if using realtime
 
   oneshot: false # crop every audio file to exactly signal length
-  out_dir: "./cache/bass_acoustic_000/train"
+  out_dir: "./cache/bass_acoustic_000"
 
 model:
   hidden_size: 512
@@ -21,3 +21,4 @@ model:
 train:
   scales: [4096,2048, 1024, 512, 256, 128]
   overlap: .75
+  batch: 16

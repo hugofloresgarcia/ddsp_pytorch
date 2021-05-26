@@ -22,7 +22,6 @@ class args(Config):
     NAME = "debug"
     ROOT = "runs"
     STEPS = 500000
-    BATCH = 16
     START_LR = 1e-3
     STOP_LR = 1e-4
     DECAY_OVER = 400000
@@ -36,16 +35,12 @@ with open(args.CONFIG, "r") as config:
 
 model = DDSPDecoder(**config["model"]).to(args.DEVICE)
 
-dataset = Dataset(config["preprocess"]["out_dir"])
+dm = ddsp.data.Datamodule(config)
+dm.setup()
 
-dataloader = torch.utils.data.DataLoader(
-    dataset,
-    args.BATCH,
-    True,
-    drop_last=True,
-)
+train_loader = dm.train_dataloader()
 
-mean_loudness, std_loudness = mean_std_loudness(dataloader)
+mean_loudness, std_loudness = mean_std_loudness(train_loader)
 config["data"]["mean_loudness"] = mean_loudness
 config["data"]["std_loudness"] = std_loudness
 
@@ -60,7 +55,8 @@ best_loss = float("inf")
 mean_loss = 0
 n_element = 0
 step = 0
-epochs = int(np.ceil(args.STEPS / len(dataloader)))
+epochs = int(np.ceil(args.STEPS / len(train_loader)))
+
 
 def multiscale_spec_loss(ori_stft, rec_stft):
     loss = 0
@@ -72,7 +68,7 @@ def multiscale_spec_loss(ori_stft, rec_stft):
 
 pbar = tqdm(range(epochs))
 for e in pbar:
-    for sig, p, l in dataloader:
+    for sig, p, l in train_loader:
         sig = sig.to(args.DEVICE)
         p = p.unsqueeze(-1).to(args.DEVICE)
         l = l.unsqueeze(-1).to(args.DEVICE)
@@ -95,9 +91,9 @@ for e in pbar:
 
         loss = multiscale_spec_loss(sig_stft, rec_stft)
         output.update({
-            'sig_stft': sig_stft, 
+            'sig_stft': sig_stft,
             'rec_stft': rec_stft,
-            'sig': sig, 
+            'sig': sig,
             'rec': rec,
             'loss': loss
         })
@@ -109,7 +105,8 @@ for e in pbar:
         writer.add_scalar("loss", loss.item(), step)
 
         step += 1
-        pbar.set_description(desc=f'step {step%len(dataset)}/{len(dataset)}')
+        pbar.set_description(
+            desc=f'step {step%len(train_loader)}/{len(train_loader)}')
 
         n_element += 1
         mean_loss += (loss.item() - mean_loss) / n_element
@@ -124,9 +121,9 @@ for e in pbar:
                 model.state_dict(),
                 path.join(args.ROOT, args.NAME, "state.pth"),
             )
-        # reset loss 
+        # reset loss
         mean_loss = 0
         n_element = 0
 
-        ddsp.utils.log_step(model, writer, output, stage='train', 
+        ddsp.utils.log_step(model, writer, output, stage='train',
                             step=step, config=config)
