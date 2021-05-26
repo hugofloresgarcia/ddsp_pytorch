@@ -56,13 +56,6 @@ with open(path.join(args.ROOT, args.NAME, "config.yaml"), "w") as out_config:
 
 opt = torch.optim.Adam(model.parameters(), lr=args.START_LR)
 
-schedule = get_scheduler(
-    len(dataloader),
-    args.START_LR,
-    args.STOP_LR,
-    args.DECAY_OVER,
-)
-
 best_loss = float("inf")
 mean_loss = 0
 n_element = 0
@@ -101,6 +94,13 @@ for e in pbar:
         )
 
         loss = multiscale_spec_loss(sig_stft, rec_stft)
+        output.update({
+            'sig_stft': sig_stft, 
+            'rec_stft': rec_stft,
+            'sig': sig, 
+            'rec': rec,
+            'loss': loss
+        })
 
         opt.zero_grad()
         loss.backward()
@@ -116,32 +116,17 @@ for e in pbar:
 
     # LOGGING
     if not e % LOG_INTERVAL:
-        writer.add_scalar("lr", schedule(e), e)
-        writer.add_scalar("reverb_decay", model.reverb.decay.item(), e)
-        writer.add_scalar("reverb_wet", model.reverb.wet.item(), e)
-        # scheduler.step()
+
+        # checkpoint model if needed
         if mean_loss < best_loss:
             best_loss = mean_loss
             torch.save(
                 model.state_dict(),
                 path.join(args.ROOT, args.NAME, "state.pth"),
             )
-
+        # reset loss 
         mean_loss = 0
         n_element = 0
 
-        # log the audio to tb (instead of writing to file)
-        BATCH_LOG_IDX = 0
-        writer.add_audio('sig',
-                         sig[BATCH_LOG_IDX],
-                         global_step=e,
-                         sample_rate=config['preprocess']["sample_rate"])
-        writer.add_audio('rec',
-                         rec[BATCH_LOG_IDX],
-                         global_step=e,
-                         sample_rate=config['preprocess']["sample_rate"])
-
-        fig = model.reconstruction_report(sig_stft, rec_stft,
-                                          config, output,
-                                          index=BATCH_LOG_IDX)
-        writer.add_figure('reconstruction', fig, e)
+        ddsp.utils.log_step(model, writer, output, stage='train', 
+                            step=step, config=config)

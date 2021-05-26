@@ -60,3 +60,28 @@ def plot_loudness(ax, loudness, index: int = 0):
     loudness = tonp(loudness[index].squeeze(-1))
     ax.set_title('Loudness')
     plot_sig(loudness, ax)
+
+def log_step(model, writer, output: dict, stage: str, step: int, config: dict):
+    IDX = 0
+
+    writer.add_scalar(f'loss/{stage}', output['loss'].item(), step)
+    writer.add_scalar("reverb_decay", model.reverb.decay.item(), step)
+    writer.add_scalar("reverb_wet", model.reverb.wet.item(), step)
+
+    # log the audio to tb (instead of writing to file)
+    writer.add_audio(f'sig/{stage}',
+                        output['sig'][IDX],
+                        global_step=step,
+                        sample_rate=config['preprocess']["sample_rate"])
+    writer.add_audio(f'rec/{stage}',
+                        output['rec'][IDX],
+                        global_step=step,
+                        sample_rate=config['preprocess']["sample_rate"])
+
+    fig = model.reconstruction_report(output['sig_stft'],
+                                      output['rec_stft'],
+                                      config,
+                                      output,
+                                      index=IDX)
+
+    writer.add_figure(f'reconstruction/{stage}', fig, step)
