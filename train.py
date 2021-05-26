@@ -5,7 +5,6 @@ import yaml
 from ddsp.model import DDSPDecoder
 from effortless_config import Config
 from os import path
-from preprocess import Dataset
 from tqdm import tqdm
 from ddsp.core import multiscale_fft, safe_log, mean_std_loudness
 import soundfile as sf
@@ -15,6 +14,7 @@ import numpy as np
 import librosa as li
 
 LOG_INTERVAL = 1 # in epochs
+VAL_INTERVAL = 10
 
 
 class args(Config):
@@ -38,6 +38,7 @@ dm = ddsp.data.Datamodule(config)
 dm.setup()
 
 train_loader = dm.train_dataloader()
+val_loader = dm.val_dataloader()
 
 mean_loudness, std_loudness = mean_std_loudness(train_loader)
 config["data"]["mean_loudness"] = mean_loudness
@@ -56,7 +57,6 @@ n_element = 0
 step = 0
 epochs = int(np.ceil(args.STEPS / len(train_loader)))
 
-
 def multiscale_spec_loss(ori_stft, rec_stft):
     loss = 0
     for s_x, s_y in zip(ori_stft, rec_stft):
@@ -65,37 +65,52 @@ def multiscale_spec_loss(ori_stft, rec_stft):
         loss = loss + lin_loss + log_loss
     return loss
 
+def _main_step(model, batch):
+    sig, p, l = batch
+    sig = sig.to(args.DEVICE)
+    p = p.unsqueeze(-1).to(args.DEVICE)
+    l = l.unsqueeze(-1).to(args.DEVICE)
+
+    l = (l - mean_loudness) / std_loudness
+
+    output = model(p, l)
+    rec = output['signal'].squeeze(-1)
+
+    sig_stft = multiscale_fft(
+        sig,
+        config["train"]["scales"],
+        config["train"]["overlap"],
+    )
+    rec_stft = multiscale_fft(
+        rec,
+        config["train"]["scales"],
+        config["train"]["overlap"],
+    )
+
+    loss = multiscale_spec_loss(sig_stft, rec_stft)
+    output.update({
+        'sig_stft': sig_stft,
+        'rec_stft': rec_stft,
+        'sig': sig,
+        'rec': rec,
+        'loss': loss
+    })
+
+    return output
+
+def val_loop(model, dataloader, config, step):
+    pbar = tqdm(enumerate(dataloader), total=len(dataloader))
+    for index, batch in pbar:
+        output = _main_step(model, batch)
+        
+    ddsp.utils.log_step(model, writer, output, 
+                        'val', step, config)
+
 pbar = tqdm(range(epochs))
 for e in pbar:
-    for sig, p, l in train_loader:
-        sig = sig.to(args.DEVICE)
-        p = p.unsqueeze(-1).to(args.DEVICE)
-        l = l.unsqueeze(-1).to(args.DEVICE)
-
-        l = (l - mean_loudness) / std_loudness
-
-        output = model(p, l)
-        rec = output['signal'].squeeze(-1)
-
-        sig_stft = multiscale_fft(
-            sig,
-            config["train"]["scales"],
-            config["train"]["overlap"],
-        )
-        rec_stft = multiscale_fft(
-            rec,
-            config["train"]["scales"],
-            config["train"]["overlap"],
-        )
-
-        loss = multiscale_spec_loss(sig_stft, rec_stft)
-        output.update({
-            'sig_stft': sig_stft,
-            'rec_stft': rec_stft,
-            'sig': sig,
-            'rec': rec,
-            'loss': loss
-        })
+    for batch in train_loader:
+        output = _main_step(model, batch)
+        loss = output['loss']
 
         opt.zero_grad()
         loss.backward()
@@ -109,6 +124,14 @@ for e in pbar:
 
         n_element += 1
         mean_loss += (loss.item() - mean_loss) / n_element
+    
+    # VALIDATION
+    if not e % VAL_INTERVAL:
+        model.eval()
+        with torch.no_grad():
+            val_loop(model, val_loader, config, e)
+        model.train()
+    #
 
     # LOGGING
     if not e % LOG_INTERVAL:
