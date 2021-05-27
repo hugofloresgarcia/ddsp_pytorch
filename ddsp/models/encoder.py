@@ -5,16 +5,18 @@ from ddsp.models.modules import Reverb, HarmonicSynth, FilteredNoise
 import librosa
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
 
 class MFCCEncoder(nn.Module):
 
     def __init__(self, sample_rate: int, block_size: int,
                  hidden_size: int, n_mfccs: int, z_dim: int = None):
+        super().__init__()
         self.hidden_size = hidden_size
         self.z_dim = z_dim
 
         self.norm = nn.LayerNorm(n_mfccs)
-        self.gru = ddsp.gru(n_mfccs, hidden_size)
+        self.gru = nn.GRU(n_mfccs, hidden_size, batch_first=True)
         self.proj = nn.Linear(hidden_size, z_dim)
 
 
@@ -22,7 +24,6 @@ class MFCCEncoder(nn.Module):
         x = self.norm(mfccs)
         x, _ = self.gru(x)
         z = self.proj(x)
-        breakpoint()
         return z
 
 class DDSPAutoencoder(nn.Module):
@@ -37,7 +38,7 @@ class DDSPAutoencoder(nn.Module):
         self.register_buffer("block_size", torch.tensor(block_size))
 
         # GRU encoder
-        self.encoder = MFCCEncoder(sample_rate, block_size, hidden_size, n_mfccs=30, 
+        self.encoder = MFCCEncoder(sample_rate, block_size, hidden_size, n_mfccs=30,
                                    z_dim=16)
 
         # GRU decoder

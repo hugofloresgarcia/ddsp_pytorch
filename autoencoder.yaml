@@ -1,5 +1,5 @@
 data:
-  data_location: "./data/bass_acoustic_000"
+  data_location: "./data/nsynth-patch"
   extension: "wav"
 
 preprocess:
@@ -8,10 +8,10 @@ preprocess:
   block_size: &blocksize 512 # must be a power of 2 if using realtime
 
   oneshot: false # crop every audio file to exactly signal length
-  out_dir: "./cache/bass_acoustic_000"
+  out_dir: "./cache/nsynth-patch"
 
 model:
-  name: autoencoder
+  name: mfcc-autoencoder
   kwargs:
     hidden_size: 512
     n_harmonic: 64
