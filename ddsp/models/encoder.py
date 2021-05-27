@@ -17,5 +17,8 @@ class MFCCEncoder(nn.Module):
 
 
     def forward(self, mfccs: torch.Tensor):
-
-        z = 
+        x = self.norm(mfccs)
+        x, _ = self.gru(x)
+        z = self.proj(x)
+        breakpoint()
+        return z
