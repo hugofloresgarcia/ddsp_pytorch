@@ -1,5 +1,4 @@
 from .core import *
-from . import model
-from . import modules
+from . import models
 from . import utils
 from . import data

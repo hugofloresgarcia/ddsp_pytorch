@@ -2,7 +2,7 @@ import torch
 import yaml
 from effortless_config import Config
 from os import path, makedirs, system
-from ddsp.model import DDSPDecoder
+from ddsp.models import DDSPDecoder
 import soundfile as sf
 from preprocess import get_files
 

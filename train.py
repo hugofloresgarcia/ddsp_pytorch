@@ -3,7 +3,6 @@ import torch
 import ddsp
 from torch.utils.tensorboard import SummaryWriter
 import yaml
-from ddsp.model import DDSPDecoder
 from effortless_config import Config
 from os import path
 from tqdm import tqdm
@@ -28,7 +27,22 @@ args.parse_args()
 with open(args.CONFIG, "r") as config:
     config = yaml.safe_load(config)
 
-model = DDSPDecoder(**config["model"]).to(args.DEVICE)
+
+def load_model(config: dict):
+    """ load a ddsp model by name
+    config["model"]["kwargs"] will be the kwargs 
+    passed to the model. 
+    """
+    name = config['model']['name']
+    if name == "single-inst-decoder":
+        model = ddsp.models.decoder.DDSPDecoder(**config["model"]["kwargs"])
+    elif name == "mfcc-autoencoder":
+        model = ddsp.models.encoder.DDSPAutoencoder(**config["model"]["kwargs"])
+    else:
+        raise ValueError(f'invalid model name: {name}')
+    return model
+
+model = load_model(config).to(args.DEVICE)
 
 dm = ddsp.data.Datamodule(config)
 dm.setup()

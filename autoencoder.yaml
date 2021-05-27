@@ -11,7 +11,7 @@ preprocess:
   out_dir: "./cache/bass_acoustic_000"
 
 model:
-  name: single-inst-decoder
+  name: autoencoder
   kwargs:
     hidden_size: 512
     n_harmonic: 64

@@ -1,5 +1,5 @@
 import ddsp
-from ddsp.modules import Reverb, HarmonicSynth, FilteredNoise
+from ddsp.models.modules import Reverb, HarmonicSynth, FilteredNoise
 
 import matplotlib.pyplot as plt
 import torch
@@ -78,12 +78,6 @@ class DDSPDecoder(nn.Module):
         super().__init__()
         self.register_buffer("sample_rate", torch.tensor(sample_rate))
         self.register_buffer("block_size", torch.tensor(block_size))
-
-        # projections from f0 and loudness to GRU
-        self.f0_mlp = ddsp.mlp(in_size=1, hidden_size=hidden_size, n_layers=3)
-        self.loudness_mlp = ddsp.mlp(in_size=1,
-                                     hidden_size=hidden_size,
-                                     n_layers=3)
 
         # GRU decoder
         self.decoder = GRUDecoder(hidden_size=hidden_size, z_dim=None)
