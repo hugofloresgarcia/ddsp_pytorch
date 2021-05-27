@@ -1,3 +1,4 @@
+from re import L
 import torch
 import ddsp
 from torch.utils.tensorboard import SummaryWriter
@@ -60,19 +61,22 @@ def multiscale_spec_loss(ori_stft, rec_stft):
         loss = loss + lin_loss + log_loss
     return loss
 
+def batch2cuda(batch: dict, device):
+    for k, v in batch.items():
+        if isinstance(v, torch.Tensor):
+            batch[k] = v.to(device)
+    return batch
+
 def _main_step(model, batch):
-    sig, p, l = batch
-    sig = sig.to(args.DEVICE)
-    p = p.unsqueeze(-1).to(args.DEVICE)
-    l = l.unsqueeze(-1).to(args.DEVICE)
+    batch = batch2cuda(batch, args.DEVICE)
 
-    l = (l - mean_loudness) / std_loudness
+    batch['loudness'] = (batch['loudness'] - mean_loudness) / std_loudness
 
-    output = model(p, l)
+    output = model(batch)
     rec = output['signal'].squeeze(-1)
 
     sig_stft = multiscale_fft(
-        sig,
+        batch['sig'],
         config["train"]["scales"],
         config["train"]["overlap"],
     )
@@ -86,7 +90,7 @@ def _main_step(model, batch):
     output.update({
         'sig_stft': sig_stft,
         'rec_stft': rec_stft,
-        'sig': sig,
+        'sig': batch['sig'],
         'rec': rec,
         'loss': loss
     })
@@ -98,7 +102,7 @@ def val_loop(model, dataloader, config, step):
     for index, batch in pbar:
         output = _main_step(model, batch)
 
-    ddsp.utils.log_step(model, writer, output, 
+    ddsp.utils.log_step(model, writer, output,
                         'val', step, config)
 
 pbar = tqdm(range(epochs))
@@ -119,7 +123,7 @@ for e in pbar:
 
         n_element += 1
         mean_loss += (loss.item() - mean_loss) / n_element
-    
+
     # VALIDATION
     if not e % VAL_INTERVAL:
         model.eval()

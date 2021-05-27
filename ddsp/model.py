@@ -104,7 +104,8 @@ class DDSPDecoder(nn.Module):
 
         self.register_buffer("phase", torch.zeros(1))
 
-    def forward(self, f0, loudness):
+    def forward(self, batch: dict):
+        f0, loudness = batch['pitch'], batch['loudness']
         hidden = self.decoder(f0, loudness)
 
         # harmonic synth

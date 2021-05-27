@@ -13,15 +13,23 @@ class Dataset(torch.utils.data.Dataset):
         self.signals = np.load(out_dir / "signals.npy")
         self.pitchs = np.load(out_dir / "pitchs.npy")
         self.loudness = np.load(out_dir / "loudness.npy")
+        self.mfccs = np.load(out_dir / "mfccs.npy")
 
     def __len__(self):
         return self.signals.shape[0]
 
     def __getitem__(self, idx):
         s = torch.from_numpy(self.signals[idx])
-        p = torch.from_numpy(self.pitchs[idx])
-        l = torch.from_numpy(self.loudness[idx])
-        return s, p, l
+        p = torch.from_numpy(self.pitchs[idx]).unsqueeze(-1)
+        l = torch.from_numpy(self.loudness[idx]).unsqueeze(-1)
+        m = torch.from_numpy(self.mfccs[idx])
+
+        return {
+            'sig': s,
+            'pitch': p,
+            'loudness': l,
+            'mfcc': m
+        }
 
 
 class Datamodule(pl.LightningDataModule):
@@ -38,9 +46,29 @@ class Datamodule(pl.LightningDataModule):
         return DataLoader(self.train_data,
                           batch_size=self.config['train']['batch'],
                           shuffle=True,
-                          drop_last=True)
+                          drop_last=True,
+                          collate_fn=dict_collate)
 
     def val_dataloader(self):
         return DataLoader(self.val_data,
                           batch_size=self.config['train']['batch'],
-                          shuffle=False)
+                          shuffle=False,
+                          collate_fn=dict_collate)
+
+
+def dict_collate(records):
+    batch = {}
+    keys = list(records[0].keys())
+
+    for k in keys:
+
+        items = [r[k] for r in records]
+        if isinstance(items[0], np.ndarray):
+            items = np.stack(items)
+            items = torch.from_numpy(items)
+        if isinstance(items[0], torch.Tensor):
+            items = torch.stack(items)
+
+        batch[k] = items
+
+    return batch

@@ -9,13 +9,15 @@ from tqdm import tqdm
 import numpy as np
 from os import makedirs, path
 import torch
+import librosa
 
 
 def get_files(data_location, extension):
     return list(pathlib.Path(data_location).rglob(f"*.{extension}"))
 
 
-def preprocess(f, sample_rate, block_size, signal_length, oneshot, **kwargs):
+def preprocess(f, sample_rate, block_size, signal_length, 
+               oneshot, **kwargs):
     x, sr = li.load(str(f), sample_rate)
     N = (signal_length - len(x) % signal_length) % signal_length
     x = np.pad(x, (0, N))
@@ -25,12 +27,15 @@ def preprocess(f, sample_rate, block_size, signal_length, oneshot, **kwargs):
 
     pitch = ddsp.extract_pitch(x, sample_rate, block_size)
     loudness = ddsp.extract_loudness(x, sample_rate, block_size)
+    mfcc = librosa.feature.mfcc(x, sr=sample_rate,  n_mfcc=30,
+                        n_fft=1024, hop_length=block_size, 
+                        fmin=20, fmax=8000, n_mels=128).T
 
     x = x.reshape(-1, signal_length)
     pitch = pitch.reshape(x.shape[0], -1)
     loudness = loudness.reshape(x.shape[0], -1)
 
-    return x, pitch, loudness
+    return x, pitch, loudness, mfcc
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -49,7 +54,6 @@ class Dataset(torch.utils.data.Dataset):
         l = torch.from_numpy(self.loudness[idx])
         return s, p, l
 
-
 def preprocess_folder(root_dir, partition, config):
     assert (root_dir /
             partition).exists(), f'{root_dir / partition} does not exist'
@@ -60,17 +64,20 @@ def preprocess_folder(root_dir, partition, config):
     signals = []
     pitchs = []
     loudness = []
+    mfccs = []
 
     for f in pb:
         pb.set_description(str(f))
-        x, p, l = preprocess(f, **config["preprocess"])
+        x, p, l, m = preprocess(f, **config["preprocess"])
         signals.append(x)
         pitchs.append(p)
         loudness.append(l)
+        mfccs.append(m)
 
     signals = np.concatenate(signals, 0).astype(np.float32)
     pitchs = np.concatenate(pitchs, 0).astype(np.float32)
     loudness = np.concatenate(loudness, 0).astype(np.float32)
+    mfccs = np.concatenate(mfccs, 0).astype(np.float32)
 
     out_dir = Path(config["preprocess"]["out_dir"]) / partition
     makedirs(out_dir, exist_ok=True)
@@ -78,7 +85,7 @@ def preprocess_folder(root_dir, partition, config):
     np.save(path.join(out_dir, "signals.npy"), signals)
     np.save(path.join(out_dir, "pitchs.npy"), pitchs)
     np.save(path.join(out_dir, "loudness.npy"), loudness)
-
+    np.save(path.join(out_dir, "mfccs.npy"), mfccs)
 
 def main():
     class args(Config):
