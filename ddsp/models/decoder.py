@@ -46,6 +46,9 @@ class GRUDecoder(nn.Module):
             self.loudness_mlp(loudness),
         ], -1)
 
+        
+        print("Concatenated output of f0 and loudness MLPs:", hidden.shape)
+        
         # concatenate z if we need to
         if self.add_z:
             assert z is not None
@@ -53,6 +56,8 @@ class GRUDecoder(nn.Module):
                 hidden,
                 self.z_mlp(z)
             ], -1)
+        
+        print("Concatenated output of f0 loudness MLPs with encoded latents:", hidden.shape)
 
         # TODO: why are we passing f0 and loudness through a skip conn? (here)
         if realtime:
@@ -63,7 +68,12 @@ class GRUDecoder(nn.Module):
             hidden = self.out_mlp(hidden)
         else:
             hidden = torch.cat([self.gru(hidden)[0], f0, loudness], -1)
+            
+            print("Concatenated output of GRU with pitch and loudness", hidden.shape)
+            
             hidden = self.out_mlp(hidden)
+            
+            print("Final MLP output of decoder", hidden.shape)
 
         return hidden
 
@@ -96,7 +106,7 @@ class DDSPDecoder(nn.Module):
         self.has_reverb = has_reverb
         self.reverb = Reverb(sample_rate, sample_rate)
 
-        self.register_buffer("phase", torch.zeros(1))
+        self.register_buffer("phase", torch.zeros(1))        
 
     def forward(self, batch: dict):
         f0, loudness = batch['pitch'], batch['loudness']
