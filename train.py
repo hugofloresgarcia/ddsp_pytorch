@@ -16,16 +16,23 @@ import librosa as li
 LOG_INTERVAL = 1 # in epochs
 VAL_INTERVAL = 10
 
+
 class args(Config):
-    CONFIG = "config.yaml"
-    NAME = "debug"
+    CONFIG = "autoencoder.yaml"
+    NAME = "multi-timbre"
     ROOT = "runs"
     DEVICE = 0 if torch.cuda.is_available() else None
+
 
 args.parse_args()
 
 with open(args.CONFIG, "r") as config:
     config = yaml.safe_load(config)
+
+# reassign name for logging/checkpoint directory to match config
+data_name = path.basename(path.normpath(config["preprocess"]["out_dir"]))
+model_name = config["model"]["name"]
+args.NAME = data_name + "_" + model_name
 
 
 def load_model(config: dict):

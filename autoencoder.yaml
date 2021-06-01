@@ -1,5 +1,5 @@
 data:
-  data_location: "./data/multi-inst"
+  data_location: "./data/two-timbre"
   extension: "wav"
 
 preprocess:
@@ -8,7 +8,7 @@ preprocess:
   block_size: &blocksize 512 # must be a power of 2 if using realtime
 
   oneshot: false # crop every audio file to exactly signal length
-  out_dir: "./cache/multi-inst"
+  out_dir: "./cache/two-timbre"
 
 model:
   name: mfcc-autoencoder

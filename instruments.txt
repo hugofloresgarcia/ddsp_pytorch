@@ -1,0 +1,3 @@
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/valid/reed_acoustic_011/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/valid/string_acoustic_080/
+
