@@ -54,7 +54,6 @@ class GRUDecoder(nn.Module):
                 self.z_mlp(z)
             ], -1)
 
-        # TODO: why are we passing f0 and loudness through a skip conn? (here)
         if realtime:
             gru_out, cache = self.gru(hidden, self.cache_gru)
             self.cache_gru.copy_(cache)
@@ -98,7 +97,7 @@ class DDSPDecoder(nn.Module):
 
         self.register_buffer("phase", torch.zeros(1))
 
-    def forward(self, batch: dict):
+    def get_controls(self, batch: dict):
         f0, loudness = batch['pitch'], batch['loudness']
         hidden = self.decoder(f0, loudness)
 
@@ -107,14 +106,21 @@ class DDSPDecoder(nn.Module):
         amplitudes = param[..., :1]
         harmonic_distribution = param[..., 1:]
 
-        harmonic_ctrls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution,
-                                                             f0)
-        harmonic = self.harmonic_synth(**harmonic_ctrls)
-
         # filtered noise
         magnitudes = self.noise_proj(hidden)
+
+        harmonic_ctrls = self.harmonic_synth.get_controls(amplitudes, harmonic_distribution,
+                                                             f0)
         noise_ctrls = self.noise_synth.get_controls(magnitudes)
-        noise = self.noise_synth(**noise_ctrls)
+
+        return {'harmonic_ctrls': harmonic_ctrls, 'noise_ctrls': noise_ctrls}
+
+    def interpolate_ctrls(self, ctrls1: dict, ctrls2: dict):
+        pass
+
+    def synthesize(self, batch: dict, ctrls: dict):
+        harmonic = self.harmonic_synth(**ctrls['harmonic_ctrls'])
+        noise = self.noise_synth(**ctrls['noise_ctrls'])
 
         # add signals
         # question: would it make sense to make this a learnable weighted sum?
@@ -125,15 +131,19 @@ class DDSPDecoder(nn.Module):
             signal = self.reverb(signal)
 
         output = {
-            'f0': f0,
-            'loudness': loudness,
+            'f0': batch['f0'],
+            'loudness': batch['loudness'],
             'signal': signal,
             'noise': noise,
             'harmonic_audio': harmonic,
-            'noise_ctrls': noise_ctrls,
-            'harmonic_ctrls': harmonic_ctrls
         }
+        output.update(ctrls)
         return output
+
+    def forward(self, batch: dict):
+        ctrls = self.get_controls(batch)
+        
+        return self.synthesize(batch, ctrls)
 
     def realtime_forward(self, f0, loudness):
         # forward pass through decoder model
