@@ -26,7 +26,7 @@ class Dataset(torch.utils.data.Dataset):
 
         return {
             'sig': s,
-            'pitch': p,
+            'f0': p,
             'loudness': l,
             'mfcc': m
         }

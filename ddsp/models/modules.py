@@ -3,6 +3,22 @@ import ddsp
 import torch
 import torch.nn as nn
 
+def interoplate_controls(interp_keys, ctrls1, ctrls2, alpha):
+    """ will interpolate the keys in interp_keys. 
+    any keys not in interp_keys will default to the ones in ctrls1
+    """
+    interp_ctrls = {}
+    for key in interp_keys:
+        interp_ctrls[key] = ddsp.utils.lin_interp(
+            ctrls1[key],
+            ctrls2[key],
+            alpha
+        )
+    
+    out_ctrls = dict(ctrls1)
+    out_ctrls.update(interp_ctrls)
+    
+    return out_ctrls
 
 class Reverb(nn.Module):
     def __init__(self, length, sample_rate, initial_wet=0, initial_decay=5):

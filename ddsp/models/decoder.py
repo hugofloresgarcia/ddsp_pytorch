@@ -115,9 +115,6 @@ class DDSPDecoder(nn.Module):
 
         return {'harmonic_ctrls': harmonic_ctrls, 'noise_ctrls': noise_ctrls}
 
-    def interpolate_ctrls(self, ctrls1: dict, ctrls2: dict):
-        pass
-
     def synthesize(self, batch: dict, ctrls: dict):
         harmonic = self.harmonic_synth(**ctrls['harmonic_ctrls'])
         noise = self.noise_synth(**ctrls['noise_ctrls'])

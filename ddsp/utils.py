@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import librosa as li
+import torch
 
 def get_scheduler(len_dataset, start_lr, stop_lr, length):
     def schedule(epoch):
@@ -36,6 +37,9 @@ def plot_spec(stft, ax, amp_to_db=True):
     ax.invert_yaxis()
 
     return ax
+
+def lin_interp(a: torch.Tensor, b: torch.Tensor, alpha: torch.Tensor):
+    return alpha * a + (1 - alpha) * b
 
 def hz_to_midi(freqs):
     return 12 * np.log2(freqs / 440) + 69

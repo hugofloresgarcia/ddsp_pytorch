@@ -56,8 +56,10 @@ config["data"]["std_loudness"] = std_loudness
 
 writer = SummaryWriter(path.join(args.ROOT, args.NAME), flush_secs=20)
 
-with open(path.join(args.ROOT, args.NAME, "config.yaml"), "w") as out_config:
-    yaml.safe_dump(config, out_config)
+with open(path.join(args.ROOT, args.NAME, "config.yaml"), "w") as f:
+    yaml.safe_dump(config, f)
+
+config['exp_dir'] = path.join(args.ROOT, args.NAME)
 
 opt = torch.optim.Adam(model.parameters(), lr=config['train']['lr'])
 
