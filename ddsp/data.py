@@ -53,6 +53,7 @@ class Datamodule(pl.LightningDataModule):
         return DataLoader(self.val_data,
                           batch_size=self.config['train']['batch'],
                           shuffle=False,
+                          drop_last=True,
                           collate_fn=dict_collate)
 
 

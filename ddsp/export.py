@@ -9,18 +9,7 @@ import soundfile as sf
 from ddsp.preprocess import get_files
 from pathlib import Path
 
-torch.set_grad_enabled(False)
 
-
-class args(Config):
-    RUN = None
-    DATA = False
-    OUT_DIR = "export"
-    REALTIME = False
-
-
-args.parse_args()
-makedirs(args.OUT_DIR, exist_ok=True)
 
 
 class ScriptDDSP(torch.nn.Module):
@@ -46,14 +35,13 @@ class DDSPInterpolator(torch.nn.Module):
     def __init__(self, ddsp1, ddsp2, mean_loudness, std_loudness):
         super().__init__()
         for ddsp in (ddsp1, ddsp2):
-            ddsp.gru.flatten_parameters()
+            ddsp.decoder.gru.flatten_parameters()
 
         self.ddsp1 = ddsp1
         self.ddsp2 = ddsp2
 
         self.register_buffer("mean_loudness", torch.tensor(mean_loudness))
         self.register_buffer("std_loudness", torch.tensor(std_loudness))
-        self.realtime = realtime
 
     def forward(self, pitch, loudness, alpha):
         if not self.realtime: raise ValueError
@@ -133,21 +121,23 @@ def load_model_state_dict(model, config):
     return model
 
 def export_multidecoder_interpolator(config1, config2, out_dir):
+    torch.set_grad_enabled(False)
 
+    Path(out_dir).mkdir(exist_ok=True, parents=True)
     model1 = ddsp.train.load_model(config1)
     model2 = ddsp.train.load_model(config2)
 
     model1 = load_model_state_dict(model1, config1)
     model2 = load_model_state_dict(model2, config2)
 
-    name = Path(config['exp_dir']).stem
+    name = Path(config1['exp_dir']).stem
 
     scripted_model = torch.jit.script(
         DDSPInterpolator(
             model1,
             model2,
-            config["data"]["mean_loudness"],
-            config["data"]["std_loudness"],
+            config1["data"]["mean_loudness"],
+            config1["data"]["std_loudness"],
         )
     )
     torch.jit.save(
@@ -159,17 +149,37 @@ def export_multidecoder_interpolator(config1, config2, out_dir):
     sf.write(
         path.join(out_dir, f"ddsp_{name}_impulse.wav"),
         impulse,
-        config["preprocess"]["sample_rate"],
+        config1["preprocess"]["sample_rate"],
     )
 
     with open(
             path.join(out_dir, f"ddsp_{name}_config.yaml"),
             "w",
     ) as config_out:
-        yaml.safe_dump(config, config_out)
+        yaml.safe_dump(config1, config_out)
+
+def load_config(path):
+    with open(path, "r") as config:
+        config = yaml.safe_load(config)
+    return config
+
+
+def main():
+    torch.set_grad_enabled(False)
+
+    class args(Config):
+        RUN = None
+        DATA = False
+        OUT_DIR = "export"
+        REALTIME = False
+
+
+    args.parse_args()
+    makedirs(args.OUT_DIR, exist_ok=True)
+
+    config = load_config(path.join(args.RUN, "config.yaml"))
+    export_single_decoder(config)
+
 
 if __name__ == "__main__":
-    with open(path.join(args.RUN, "config.yaml"), "r") as config:
-        config = yaml.safe_load(config)
-
-    export_single_decoder(config)
+    main()

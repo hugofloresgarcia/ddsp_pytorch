@@ -31,8 +31,9 @@ class GRUDecoder(nn.Module):
 
         # add a z projection if needed
         self.add_z = z_dim is not None
-        if self.add_z:
-            self.z_mlp = ddsp.mlp(z_dim, hidden_size, N_LAYERS)
+        # for torch.jit.script, add a dummy z_mlp if we dont need
+        if z_dim is None: z_dim = 1
+        self.z_mlp = ddsp.mlp(z_dim, hidden_size, N_LAYERS)
 
         # GRU decoder
         # add an extra hidden block if we're adding Z
@@ -98,7 +99,7 @@ class DDSPDecoder(nn.Module):
         self.register_buffer("phase", torch.zeros(1))
 
     def get_controls(self, batch: dict):
-        f0, loudness = batch['pitch'], batch['loudness']
+        f0, loudness = batch['f0'], batch['loudness']
         hidden = self.decoder(f0, loudness)
 
         # harmonic synth

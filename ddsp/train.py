@@ -13,21 +13,6 @@ from ddsp.utils import get_scheduler
 import numpy as np
 import librosa as li
 
-LOG_INTERVAL = 1 # in epochs
-VAL_INTERVAL = 10
-
-class args(Config):
-    CONFIG = "config.yaml"
-    NAME = "debug"
-    ROOT = "runs"
-    DEVICE = 0 if torch.cuda.is_available() else None
-
-args.parse_args()
-
-with open(args.CONFIG, "r") as config:
-    config = yaml.safe_load(config)
-
-
 def load_model(config: dict):
     """ load a ddsp model by name
     config["model"]["kwargs"] will be the kwargs 
@@ -41,33 +26,6 @@ def load_model(config: dict):
     else:
         raise ValueError(f'invalid model name: {name}')
     return model
-
-model = load_model(config).to(args.DEVICE)
-
-dm = ddsp.data.Datamodule(config)
-dm.setup()
-
-train_loader = dm.train_dataloader()
-val_loader = dm.val_dataloader()
-
-mean_loudness, std_loudness = mean_std_loudness(train_loader)
-config["data"]["mean_loudness"] = mean_loudness
-config["data"]["std_loudness"] = std_loudness
-
-writer = SummaryWriter(path.join(args.ROOT, args.NAME), flush_secs=20)
-
-with open(path.join(args.ROOT, args.NAME, "config.yaml"), "w") as f:
-    yaml.safe_dump(config, f)
-
-config['exp_dir'] = path.join(args.ROOT, args.NAME)
-
-opt = torch.optim.Adam(model.parameters(), lr=config['train']['lr'])
-
-best_loss = float("inf")
-mean_loss = 0
-n_element = 0
-step = 0
-epochs = int(np.ceil(config['train']['steps'] / len(train_loader)))
 
 def multiscale_spec_loss(ori_stft, rec_stft):
     loss = 0
@@ -101,7 +59,6 @@ def _main_step(model, batch):
         config["train"]["scales"],
         config["train"]["overlap"],
     )
-
     loss = multiscale_spec_loss(sig_stft, rec_stft)
     output.update({
         'sig_stft': sig_stft,
@@ -121,46 +78,96 @@ def val_loop(model, dataloader, config, step):
     ddsp.utils.log_step(model, writer, output,
                         'val', step, config)
 
-pbar = tqdm(range(epochs))
-for e in pbar:
-    for batch in train_loader:
-        output = _main_step(model, batch)
-        loss = output['loss']
 
-        opt.zero_grad()
-        loss.backward()
-        opt.step()
+if __name__ == "__main__":
+    LOG_INTERVAL = 1  # in epochs
+    VAL_INTERVAL = 10
 
-        writer.add_scalar("loss", loss.item(), step)
+    class args(Config):
+        CONFIG = "config.yaml"
+        NAME = "debug"
+        ROOT = "runs"
+        DEVICE = 0 if torch.cuda.is_available() else None
 
-        step += 1
-        pbar.set_description(
-            desc=f'step {step%len(train_loader)}/{len(train_loader)}')
+    args.parse_args()
 
-        n_element += 1
-        mean_loss += (loss.item() - mean_loss) / n_element
+    with open(args.CONFIG, "r") as config:
+        config = yaml.safe_load(config)
 
-    # VALIDATION
-    if not e % VAL_INTERVAL:
-        model.eval()
-        with torch.no_grad():
-            val_loop(model, val_loader, config, e)
-        model.train()
-    #
+    model = load_model(config).to(args.DEVICE)
 
-    # LOGGING
-    if not e % LOG_INTERVAL:
+    dm = ddsp.data.Datamodule(config)
+    dm.setup()
 
-        # checkpoint model if needed
-        if mean_loss < best_loss:
-            best_loss = mean_loss
-            torch.save(
-                model.state_dict(),
-                path.join(args.ROOT, args.NAME, "state.pth"),
-            )
-        # reset loss
-        mean_loss = 0
-        n_element = 0
+    train_loader = dm.train_dataloader()
+    val_loader = dm.val_dataloader()
 
-        ddsp.utils.log_step(model, writer, output, stage='train',
-                            step=step, config=config)
+    mean_loudness, std_loudness = mean_std_loudness(train_loader)
+    config["data"]["mean_loudness"] = mean_loudness
+    config["data"]["std_loudness"] = std_loudness
+
+    writer = SummaryWriter(path.join(args.ROOT, args.NAME), flush_secs=20)
+
+    config['exp_dir'] = path.join(args.ROOT, args.NAME)
+
+    with open(path.join(args.ROOT, args.NAME, "config.yaml"), "w") as f:
+        yaml.safe_dump(config, f)
+
+
+    opt = torch.optim.Adam(filter(lambda p: p.requires_grad,
+                                  model.parameters()),
+                           lr=config['train']['lr'])
+
+    best_loss = float("inf")
+    mean_loss = 0
+    n_element = 0
+    step = 0
+    epochs = int(np.ceil(config['train']['steps'] / len(train_loader)))
+
+    pbar = tqdm(range(epochs))
+    for e in pbar:
+        for batch in train_loader:
+            output = _main_step(model, batch)
+            loss = output['loss']
+
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+            writer.add_scalar("loss", loss.item(), step)
+
+            step += 1
+            pbar.set_description(
+                desc=f'step {step%len(train_loader)}/{len(train_loader)}')
+
+            n_element += 1
+            mean_loss += (loss.item() - mean_loss) / n_element
+
+        # VALIDATION
+        if not e % VAL_INTERVAL:
+            model.eval()
+            with torch.no_grad():
+                val_loop(model, val_loader, config, e)
+            model.train()
+        #
+
+        # LOGGING
+        if not e % LOG_INTERVAL:
+
+            # checkpoint model if needed
+            if mean_loss < best_loss:
+                best_loss = mean_loss
+                torch.save(
+                    model.state_dict(),
+                    path.join(args.ROOT, args.NAME, "state.pth"),
+                )
+            # reset loss
+            mean_loss = 0
+            n_element = 0
+
+            ddsp.utils.log_step(model,
+                                writer,
+                                output,
+                                stage='train',
+                                step=step,
+                                config=config)

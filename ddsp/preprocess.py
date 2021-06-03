@@ -15,8 +15,7 @@ import librosa
 def get_files(data_location, extension):
     return list(pathlib.Path(data_location).rglob(f"*.{extension}"))
 
-
-def preprocess(f, sample_rate, block_size, signal_length, 
+def preprocess(f, sample_rate, block_size, signal_length,
                oneshot, **kwargs):
     x, sr = li.load(str(f), sample_rate)
     N = (signal_length - len(x) % signal_length) % signal_length
@@ -27,16 +26,25 @@ def preprocess(f, sample_rate, block_size, signal_length,
 
     pitch = ddsp.extract_pitch(x, sample_rate, block_size)
     loudness = ddsp.extract_loudness(x, sample_rate, block_size)
-    mfcc = librosa.feature.mfcc(x, sr=sample_rate,  n_mfcc=30,
-                        n_fft=1024, hop_length=block_size, 
-                        fmin=20, fmax=8000, n_mels=128,).T
+    mfcc = librosa.feature.mfcc(
+        x,
+        sr=sample_rate,
+        n_mfcc=30,
+        n_fft=2048,
+        hop_length=block_size,
+        win_length=2048,
+        fmin=20,
+        fmax=8000,
+        n_mels=128,
+    ).T
 
     x = x.reshape(-1, signal_length)
     pitch = pitch.reshape(x.shape[0], -1)
     loudness = loudness.reshape(x.shape[0], -1)
+    mfcc = mfcc[:-1, :]
+    mfcc = mfcc.reshape(x.shape[0], -1, mfcc.shape[-1])
 
     return x, pitch, loudness, mfcc
-
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, out_dir):
@@ -77,7 +85,7 @@ def preprocess_folder(root_dir, partition, config):
     signals = np.concatenate(signals, 0).astype(np.float32)
     pitchs = np.concatenate(pitchs, 0).astype(np.float32)
     loudness = np.concatenate(loudness, 0).astype(np.float32)
-    mfccs = np.stack(mfccs).astype(np.float32)
+    mfccs = np.concatenate(mfccs, 0).astype(np.float32)
 
     out_dir = Path(config["preprocess"]["out_dir"]) / partition
     makedirs(out_dir, exist_ok=True)
