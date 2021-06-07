@@ -45,6 +45,12 @@ def load_model(config: dict):
         model = ddsp.models.decoder.DDSPDecoder(**config["model"]["kwargs"])
     elif name == "mfcc-autoencoder":
         model = ddsp.models.encoder.DDSPAutoencoder(**config["model"]["kwargs"])
+    elif name == "timbre-only-encoder":
+        model = ddsp.models.encoder.DDSPTimbreOnlyEncoder(**config["model"]["kwargs"])
+    elif name == "vrnn":
+        model = ddsp.models.encoder.DDSPVRNN(**config["model"]["kwargs"])
+    elif name == "stationary-timbre-encoder":
+        model = ddsp.models.encoder.DDSPStationaryTimbreEncoder(**config["model"]["kwargs"])
     else:
         raise ValueError(f'invalid model name: {name}')
     return model

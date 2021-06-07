@@ -1,0 +1,14 @@
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/vocal_synthetic_014/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/keyboard_electronic_039/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/organ_electronic_024/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/mallet_acoustic_040/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/bass_synthetic_012/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/synth_lead_synthetic_002/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/keyboard_acoustic_016/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/guitar_electronic_001/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/guitar_synthetic_005/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/guitar_acoustic_016/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/mallet_electronic_009/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/flute_synthetic_002/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/reed_acoustic_014/
+/home/pmo183/cs496_final/ddsp_pytorch/data/nsynth-patch/train/string_acoustic_019/

@@ -1,5 +1,5 @@
 data:
-  data_location: ./data/string_acoustic_080
+  data_location: ./data/synth_lead_synthetic_002
   extension: wav
 model:
   kwargs:
@@ -13,7 +13,7 @@ model:
 preprocess:
   block_size: 512
   oneshot: false
-  out_dir: ./cache/string_acoustic_080
+  out_dir: ./cache/synth_lead_synthetic_002
   sample_rate: 48000
   signal_length: 192000
 train:
@@ -27,4 +27,4 @@ train:
   - 512
   - 256
   - 128
-  steps: 50000
+  steps: 25000

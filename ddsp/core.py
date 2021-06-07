@@ -24,6 +24,19 @@ def mean_std_loudness(dataset):
     return mean, std
 
 
+@torch.no_grad()
+def mean_std_pitch(dataset):
+    mean = 0
+    std = 0
+    n = 0
+    for batch in dataset:
+        l = batch['pitch']
+        n += 1
+        mean += (l.mean().item() - mean) / n
+        std += (l.std().item() - std) / n
+    return mean, std
+
+
 def multiscale_fft(signal, scales, overlap):
     stfts = []
     for s in scales:
