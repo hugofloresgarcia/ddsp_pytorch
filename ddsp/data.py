@@ -5,15 +5,18 @@ import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
+def rglob_np_array(pdir: Path, name: str):
+    files = pdir.glob(f'**/{name}.npy')
+    return np.concatenate([np.load(f) for f in files], axis=0)
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, out_dir):
         super().__init__()
         out_dir = Path(out_dir)
-        self.signals = np.load(out_dir / "signals.npy")
-        self.pitchs = np.load(out_dir / "pitchs.npy")
-        self.loudness = np.load(out_dir / "loudness.npy")
-        self.mfccs = np.load(out_dir / "mfccs.npy")
+        self.signals = rglob_np_array(out_dir, 'signals')
+        self.pitchs = rglob_np_array(out_dir, 'pitchs')
+        self.loudness = rglob_np_array(out_dir, 'loudness')
+        self.mfccs = rglob_np_array(out_dir, 'mfccs')
 
     def __len__(self):
         return self.signals.shape[0]

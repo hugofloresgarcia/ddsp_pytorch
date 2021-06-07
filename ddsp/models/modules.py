@@ -3,7 +3,7 @@ import ddsp
 import torch
 import torch.nn as nn
 
-def interoplate_controls(interp_keys, ctrls1, ctrls2, alpha):
+def interpolate_controls(interp_keys, ctrls1, ctrls2, alpha):
     """ will interpolate the keys in interp_keys. 
     any keys not in interp_keys will default to the ones in ctrls1
     """
@@ -23,8 +23,9 @@ def interoplate_controls(interp_keys, ctrls1, ctrls2, alpha):
 class Reverb(nn.Module):
     def __init__(self, length, sample_rate, initial_wet=0, initial_decay=5):
         super().__init__()
+
         self.length = length
-        self.sample_rate = sample_rate
+        self.register_buffer("sample_rate", torch.tensor(sample_rate))
 
         self.noise = nn.Parameter((torch.rand(length) * 2 - 1).unsqueeze(-1))
         self.decay = nn.Parameter(torch.tensor(float(initial_decay)))
@@ -50,12 +51,11 @@ class Reverb(nn.Module):
 
         return x
 
-
 class HarmonicSynth(nn.Module):
     def __init__(self, block_size: int, sample_rate: int):
         super().__init__()
-        self.block_size = block_size
-        self.sample_rate = sample_rate
+        self.register_buffer("sample_rate", torch.tensor(sample_rate))
+        self.register_buffer("block_size", torch.tensor(block_size))
 
     def get_controls(self, amplitudes, harmonic_distribution, f0):
         """gets control parameters for the synthesizer.
@@ -120,7 +120,7 @@ class FilteredNoise(nn.Module):
                  window_size: int,
                  initial_bias: int = -5.0):
         super().__init__()
-        self.block_size = block_size
+        self.register_buffer("block_size", torch.tensor(block_size))
         self.window_size = window_size
         self.initial_bias = initial_bias
 
@@ -130,7 +130,7 @@ class FilteredNoise(nn.Module):
         }
 
     def forward(self, magnitudes):
-        impulse = ddsp.amp_to_impulse_response(magnitudes, self.block_size)
+        impulse = ddsp.amp_to_impulse_response(magnitudes, int(self.block_size))
         # create a noise vector N(0, 1)
         noise = torch.rand(
             impulse.shape[0],

@@ -153,9 +153,9 @@ def amp_to_impulse_response(amp, target_size):
     # from freq domain to time domain
     impulse = fft.irfft(amp)
 
-    filter_size = impulse.shape[-1]
+    filter_size = int(impulse.shape[-1])
 
-    impulse = torch.roll(impulse, filter_size // 2, -1)
+    impulse = torch.roll(impulse, shifts=filter_size // 2, dims=-1)
     win = torch.hann_window(filter_size, dtype=impulse.dtype, device=impulse.device)
 
     impulse = impulse * win

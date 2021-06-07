@@ -80,7 +80,7 @@ class DDSPDecoder(nn.Module):
         self.register_buffer("block_size", torch.tensor(block_size))
 
         # GRU decoder
-        self.decoder = GRUDecoder(hidden_size=hidden_size, z_dim=None)
+        self.decoder = GRUDecoder(hidden_size=hidden_size)
 
         # projections to harmonics and noise
         self.harmonic_proj = nn.Linear(hidden_size, n_harmonic + 1)
@@ -98,9 +98,9 @@ class DDSPDecoder(nn.Module):
 
         self.register_buffer("phase", torch.zeros(1))
 
-    def get_controls(self, batch: dict):
+    def get_controls(self, batch: dict, realtime=False):
         f0, loudness = batch['f0'], batch['loudness']
-        hidden = self.decoder(f0, loudness)
+        hidden = self.decoder(f0, loudness, realtime)
 
         # harmonic synth
         param = self.harmonic_proj(hidden)
