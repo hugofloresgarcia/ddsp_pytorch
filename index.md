@@ -147,24 +147,26 @@ To interpolate with decoder-only models, we must train a separate decoder for ea
 ![](https://i.imgur.com/8eWDlXf.png)
 
 **Violin**: 
-    <audio
-        controls
-        src="./audio/dcdr-vio.wav">
 
+<audio
+    controls
+    src="./audio/dcdr-vio.wav">
+</audio>
 
 **Clarinet**:
-    </audio> 
-        <audio
+ 
+<audio
         controls
         src="./audio/dcdr-clar.wav">
-    </audio> 
+</audio> 
 
 
 **Violin -> Clarinet**:
-  <audio 
-      controls 
-      src="./audio/dcdr-vioclar.wav"> 
-   </audio> 
+
+<audio 
+    controls 
+    src="./audio/dcdr-vioclar.wav"> 
+  </audio> 
 
 
 
@@ -197,24 +199,26 @@ To interpolate between sequences of latent vectors ($Z$), we pick one randomly s
 ![](https://i.imgur.com/SbgMxMC.png)
 
 **Violin**: 
-    <audio
-        controls
-        src="./audio/gru-vio.wav">
 
-        
+<audio
+    controls
+    src="./audio/gru-vio.wav">
+</audio> 
+
 **Clarinet**:
-    </audio> 
-        <audio
-        controls
-        src="./audio/gru-clar.wav">
-    </audio> 
+
+<audio
+    controls
+    src="./audio/gru-clar.wav">
+</audio> 
 
 
 **Violin -> Clarinet**:
-  <audio 
-      controls 
-      src="./audio/gru-vioclar.wav"> 
-   </audio> 
+
+<audio 
+    controls 
+    src="./audio/gru-vioclar.wav"> 
+  </audio> 
 
 
 Results for the time-varying latent vector interpolation are shown above. Unfortunately, we find that the model disregards the latent vector when synthesizing audio, and produces perceptually similar sounds regardless of what the input $Z$ is. We believe this could be an artifact caused by simply repeating the same $Z$ vector for an entire sequence. 
