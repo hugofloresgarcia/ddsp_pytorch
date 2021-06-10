@@ -150,17 +150,24 @@ To interpolate with decoder-only models, we must train a separate decoder for ea
     <audio
         controls
         src="./audio/dcdr-vio.wav">
+
+
 **Clarinet**:
     </audio> 
         <audio
         controls
         src="./audio/dcdr-clar.wav">
     </audio> 
+
+
 **Violin -> Clarinet**:
   <audio 
       controls 
       src="./audio/dcdr-vioclar.wav"> 
    </audio> 
+
+
+
 
 Results for interpolation between synthesizer controls are shown above. The first two rows are reconstructions of "Somewhere over the rainbow" using only the violin and clarinet decoder-only models, respectively. The third row contains a linear interpolation between the synthesizer controls for the violin and clarinet. During the interpolation, we smoothly interpolate from the violin synthesizer controls to the clarinet synthesizer controls over the span of the audio clip. 
 
@@ -193,12 +200,16 @@ To interpolate between sequences of latent vectors ($Z$), we pick one randomly s
     <audio
         controls
         src="./audio/gru-vio.wav">
+
+        
 **Clarinet**:
     </audio> 
         <audio
         controls
         src="./audio/gru-clar.wav">
     </audio> 
+
+
 **Violin -> Clarinet**:
   <audio 
       controls 
