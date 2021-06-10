@@ -21,21 +21,25 @@ description: Hugo Flores Garcia and Patrick O'Reilly
 
 By way of analogy, imagine you are building a neural network to generate paintings. You might consider training the network to generate pixel-by-pixel in the image domain via autoregression, transposed convolutions, or fully-connected layers. Modeling paintings at this level of granularity will likely be computationally expensive, and the network will have to learn implicitly to mimic the "textural" attributes that arise during the physical process of painting.
 
-</br>
+
+
 <div style="text-align:center">
   <img src="https://i.imgur.com/ph1wgEd.png" width=200px>
 </div>
-</br>
+
+
 
 
 
 On the other hand, imagine you could constrain your network to operate on its digital canvas via brushstrokes. If you could efficiently parameterize this "generating action," you might be able to more accurately mimic some of the textural or physical aspects of painting while reducing your model's complexity.
 
-</br>
+
+
 <div style="text-align:center">
   <img src="https://i.imgur.com/fM2Tylq.png" width=200px>
 </div>
-</br>
+
+
 
 
 
@@ -50,7 +54,8 @@ DDSP modules were first demonstrated as part of an auto-encoder architecture tra
 
 The model is trained end-to-end with a multi-scale spectrogram reconstruction loss. Because the autoencoder learns to map pitch and loudness curves to realistic performances of a target instrument, any monophonic audio can be re-rendered as if performed by the target instrument by passing extracted pitch and loudness curves to the model. We refer to this as __timbre transfer__, where timbre refers to the set of sonic attributes which characterize a given instrument outside of pitch and loudness. You can try this for yourself with Magenta's [Tone Transfer](https://sites.research.google/tonetransfer) app or [Colab notebooks](https://colab.research.google.com/github/magenta/ddsp/blob/master/ddsp/colab/demos/timbre_transfer.ipynb).
 
-</br>
+
+
 <div style="text-align:center">
 <figure>
   <img src="https://i.imgur.com/ml4MvHX.png" width=600px>
@@ -58,7 +63,8 @@ The model is trained end-to-end with a multi-scale spectrogram reconstruction lo
   </figcaption>
   </figure>
 </div>
-</br>
+
+
 
 
 
@@ -71,7 +77,8 @@ A DDSP autoencoder is typically trained to reconstruct audio from a single instr
   <figcaption style="font-size:10px;;text-align:justify;">The <b>DDSP reconstruction process</b>, shown left-to-right in the above autoencoder diagram, is pictured here bottom-to-top. Loudness and pitch ("Fundamental Frequency") signals are mapped by a deterministic encoder and decoder to control signals ("Amplitude," "Harmonic Distribution," "Noise Magnitudes") and passed to DDSP components which generate harmonic audio ("Additive Audio") and filtered noise. The resulting signals are summed and passed through the reverberation module to produce a reconstruction of the original audio ("Full Resynthesis")</figcaption>
  </figure>
 </div>
-</br>
+
+
 
 
 While the DDSP autoencoder was originally developed to perform timbre transfer, [experiments](https://storage.googleapis.com/ddsp/index.html#independent) in the [original paper](https://arxiv.org/pdf/2001.04643.pdf) suggest its continuous intermediate representations may allow for interpolation between the characteristics of multiple encoded instrument timbres, thereby enabling the creation of interesting "hybrid" timbres (e.g. half-flute, half-guitar). In this project, we explore  methods for performing __timbre interpolation__ using the general DDSP autoencoder architecture.
@@ -88,7 +95,8 @@ We begin by building a set of _decoder-only_ DDSP autoencoder models using the [
   <figcaption style="font-size:10px;;text-align:justify;">A <b>DDSP decoder-only model</b>. Pitch ("F0") is encoded using the CREPE pitch-tracking algorithm. Because the model is trained on a single instrument with only pitch and loudness conditioning, the decoder learns to produce a single timbre</figcaption>
  </figure>
 </div>
-</br>
+
+
 
 
 We train models on single-instrument subsets of Google's [NSynth dataset](https://magenta.tensorflow.org/datasets/nsynth), each consisting of a small number of 4-second single-note excerpts from commercial sample libraries. For ease of comparison, we provide  timbre transfer examples using the following source audio:
@@ -143,7 +151,8 @@ One straightforward way to mix timbres is to interpolate between the control sig
   <figcaption style="font-size:10px;;text-align:justify;"><b>Synthesizer control interpolation</b> using two decoder-only models. The control signals emitted by both decoders are linearly interpolated and passed to the DDSP modules. </figcaption>
  </figure>
 </div>
-</br>
+
+
 
 To interpolate with decoder-only models, we must train a separate decoder for each instrument we wish to interpolate between. We use the same pitch and loudness conditioning (normalized separately to match the training distributions) for both decoders. Each decoder outputs a tuple composed of the predicted harmonic amplitudes and noise filter magnitudes. We perform linear interpolation between the harmonic amplitudes of both decoders, and do the same for the noise filter magnitudes. In essence, this is equivalent to performing linear interpolation between the time-varying spectral envelopes of these two instruments. 
 
@@ -243,7 +252,8 @@ This architecture is identical to the "Spectral Feature Interpolation" model sho
   <figcaption style="font-size:10px;;text-align:justify;"><b>Single-frame spectral feature interpolation</b> using a DDSP autoencoder model with a dedicated timbre encoder. Interpolation is performed between stationary timbre representations produced by the deterministic fully-connected encoder.</figcaption>
  </figure>
 </div>
-</br>
+
+
 
 The interpolations produced by this approach are of poor quality and exhibit clear entanglement between timbre and loudness:
 
@@ -259,7 +269,8 @@ Interestingly, the timbre encodings themselves show reasonable separation betwee
   <figcaption style="font-size:10px;;text-align:justify;">Projected <b>single-frame timbre encodings</b> produced by the first and average MFCC frames. We can see that for both models, timbre encodings are reasonably well-separated. </figcaption>
  </figure>
 </div>
-</br>
+
+
 
 
 
@@ -275,7 +286,8 @@ Our timbre encoder consists of a set of randomly-initialized convolutional filte
   <figcaption style="font-size:10px;;text-align:justify;"><b>Textural feature interpolation</b> is performed in the same manner as single-frame spectral feature interpolation, substituting the timbre encoder architecture shown here. Interpolation is performed between stationary timbre representations produced by the deterministic convolutional encoder.</figcaption>
  </figure>
 </div>
-</br>
+
+
 
 
 This approach is somewhat ad-hoc, as there is no mechanism for enforcing smoothness or other desirable properties in the texture embedding space. As with the spectral feature interpolation, there is no mechanism for forcing the decoder to utilize the texture encodings; we simply hope that this representation is better disentangled from pitch and loudness due to the relative locality and diversity of the Gram statistics. Unfortunately, the resulting interpolations are again of poor quality despite the well-separated embedding space. 
@@ -289,7 +301,8 @@ __ADD AUDIO/PLOTS__
   <figcaption style="font-size:10px;;text-align:justify;">Projected <b>textural timbre encodings</b> produced by the random convolutional method. Again, for both models, timbre encodings are reasonably well-separated. </figcaption>
  </figure>
 </div>
-</br>
+
+
 
 
 
