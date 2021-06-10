@@ -1,4 +1,4 @@
-theme: jekyll-theme-minimal
+theme: jekyll-theme-cayman
 github:
   repository_url: https://github.com/hugofloresgarcia/ddsp_pytorch
 demo_url: https://github.com/hugofloresgarcia/ddsp_pytorch
