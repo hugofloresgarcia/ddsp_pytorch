@@ -26,7 +26,8 @@ By way of analogy, imagine you are building a neural network to generate paintin
   <img src="https://i.imgur.com/ph1wgEd.png" width=200px>
 </div>
 </br>
-</br>
+
+
 
 On the other hand, imagine you could constrain your network to operate on its digital canvas via brushstrokes. If you could efficiently parameterize this "generating action," you might be able to more accurately mimic some of the textural or physical aspects of painting while reducing your model's complexity.
 
@@ -35,7 +36,8 @@ On the other hand, imagine you could constrain your network to operate on its di
   <img src="https://i.imgur.com/fM2Tylq.png" width=200px>
 </div>
 </br>
-</br>
+
+
 
 In the same vein, DDSP allows for the generation of waveform audio using a high-level, physically-inspired model of sound called [Spectral Modeling Synthesis](https://ccrma.stanford.edu/~jos/sasp/Spectral_Modeling_Synthesis.html). Under this model, audio is represented as a time-varying combination of harmonics (sinusoids) and filtered noise. Convolutional reverberation is also applied to mimic the effects of different acoustic environments. DDSP implements these three components – harmonic audio, filtered noise, and reverb – as differentiable modules in the TensorFlow library. Both the harmonic and noise modules map low-dimensional "control" signals to audio, while the reverb module maps audio to audio.
 
@@ -79,6 +81,7 @@ While the DDSP autoencoder was originally developed to perform timbre transfer, 
 
 We begin by building a set of _decoder-only_ DDSP autoencoder models using the [ddsp_pytorch](https://github.com/acids-ircam/ddsp_pytorch) library, a third-party PyTorch implementation of Magenta's package. Decoder-only models do not encode spectral features from the input audio, and are trained to fit a single instrument timbre using only pitch and loudness. We use a pretrained [CREPE](https://github.com/marl/crepe) pitch extractor to estimate pitch curves and use fixed DSP techniques to extract loudness curves. 
 
+
 <div style="text-align:center">
 <figure>
   <img src=https://i.imgur.com/w3HqLRd.png width=600px>
@@ -93,7 +96,7 @@ We train models on single-instrument subsets of Google's [NSynth dataset](https:
 
 __INSERT SINGNG MP3__
 
-</br>
+
 
 __TODO: FILL OUT THIS TABLE WITH THE ACTUAL DECODERS USED!!!!!__
 
@@ -103,17 +106,20 @@ __TODO: FILL OUT THIS TABLE WITH THE ACTUAL DECODERS USED!!!!!__
 | Strings | 394 | 98 ± 47 |  | 
 
 
-</br>
+
 
 Additionally, we train decoder-only models on expressive solo violin and clarinet datasets, each consisting of longer and more varied excerpts than NSynth.
 
-</br>
+
+
 
 | Instrument | Training Examples | CREPE Pitch (avg, s.d.) | Example Output |
 |---|---|---|---|
 | clarinet |251| 411 ± 342  |   | 
 | violin |141| 551 ± 221  |   | 
-</br>
+
+
+
 
 We find that to coax semi-realistic output from the baseline timbre-transfer models, a number of alterations are necessary. These include:
 * **loudness**: we must carefully fine-tune the input loudness signal to match the loudness distribution the model was trained on. Even though we normalize the input loudness to match the mean and standard deviation of the training data loudness distribution, we find that models exhibit wildly different behavior when the loudness is out of distribution, especially on the expressive clarinet and violin decoders. In some cases, a compressive nonlinearity (e.g. sigmoid function) must be applied to keep inputs near a model's "sweet spot."
