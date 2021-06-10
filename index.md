@@ -1,214 +1,257 @@
+# Latent Timbre Interpolation with Differentiable Digital Signal Processing
+By Hugo Flores Garcia and Patrick O'Reilly
+
 ---
-title: COD Instrument Labeler
-description: Cooper Barth, Hugo Flores García, Jack Wiig
----
 
-## About
-The COD Instrument Labeler is a tool designed to show how digital audio workstations can be improved to help audio engineers with vision impairments navigate through their tracks more easily.
+## Contents
 
-Our solution is a web interface that allows an end user to upload a track and have it automatically labeled in the graphical interface by pressing "Generate Labels". The website will label each second of audio in the track and display those to the user in the labels section.
+* [Introduction](#intro)  
+* [Timbre Transfer Baselines](#baselines)  
+* [Time-Varying Latent Timbre Interpolation](#time-varying)  
+  * [Synthesizer Control Interpolation](#control)  
+  * [Spectral Feature Interpolation](#spectral)  
+* [Stationary Latent Timbre Interpolation](#stationary)  
+  * [Single-Frame Spectral Feature Interpolation](#frame)  
+  * [Textural Feature Interpretation](#texture)  
+* [Future Directions](#future)
 
-## Motivation
-A common problem that occurs in the audio engineering workflow is having to process many tracks at once. Consider a day of heavy recording at the studio: When you get back, you'll have to import the 80 or so tracks that you've recorded and manually comb through them to apply labels and figure out what's what. This process can take painstakingly long, but using the latest technology in sound event detection (SED) machine learning research makes the task fully automatable.
+## Introduction <a name="intro"> </a>
 
-## Overview
-We created a proof of concept design that is intended to simulate the experience we hope to bring to a digital audio workstation (DAW). Digital audio workstations are the state of the art audio editing and creation tools. Notable examples include Logic Pro, Pro Tools, Ableton, FL Studio, Reaper, etc.
+[Differentiable Digital Signal Processing](https://magenta.tensorflow.org/ddsp) (DDSP) is a library of audio signal-processing modules implemented for use in deep learning applications. Released in 2020 by a team of researchers at [Google Magenta](https://magenta.tensorflow.org/), the project allows for computationally-efficient modeling of monophonic musical audio by constraining generation in terms of classical synthesis techniques. This serves as a useful inductive bias, allowing for high-quality emulations of musical instruments with relatively small neural network architectures.
 
-Our solution provides a label for each second of audio in the track, coalesced. Not only that, we added custom navigation features that allow us to more easily move between labels with the same name, such as a "Piano" label at 5 seconds to a "Piano" label at 15 seconds. These labels are screenreader friendly and tested with NVDA on Windows and VoiceOver on macOS. We also provided manual labeling, playback, and a movable playhead to simulate the basic functionality of a DAW.
+By way of analogy, imagine you are building a neural network to generate paintings. You might consider training the network to generate pixel-by-pixel in the image domain via autoregression, transposed convolutions, or fully-connected layers. Modeling paintings at this level of granularity will likely be computationally expensive, and the network will have to learn implicitly to mimic the "textural" attributes that arise during the physical process of painting.
 
-Currently, we are recognizing the following types of sounds:
+</br>
+<div style="text-align:center">
+  <img src="https://i.imgur.com/ph1wgEd.png" width=200px>
+</div>
+</br>
+</br>
 
-- acoustic guitar
-- auxiliary percussion
-- brass section
-- cello
-- clean electric guitar
-- distorted electric guitar
-- double bass
-- drum set
-- electric bass
-- female singer
-- male singer
-- oboe
-- piano
-- synthesizer
-- tack piano
-- trumpet
-- vibraphone
-- viola
-- violin
-- vocalists
+On the other hand, imagine you could constrain your network to operate on its digital canvas via brushstrokes. If you could efficiently parameterize this "generating action," you might be able to more accurately mimic some of the textural or physical aspects of painting while reducing your model's complexity.
 
-## Interface
-[Try It Out](https://cod-audio.github.io/cod/) | [View the Source](https://github.com/cod-audio/cod)
+</br>
+<div style="text-align:center">
+  <img src="https://i.imgur.com/fM2Tylq.png" width=200px>
+</div>
+</br>
+</br>
 
-A screenshot of the interface is visible below. The demo website contains information on how to use the interface, including special navigation commands to move between the labels. It has been tested on Safari and Chrome.
+In the same vein, DDSP allows for the generation of waveform audio using a high-level, physically-inspired model of sound called [Spectral Modeling Synthesis](https://ccrma.stanford.edu/~jos/sasp/Spectral_Modeling_Synthesis.html). Under this model, audio is represented as a time-varying combination of harmonics (sinusoids) and filtered noise. Convolutional reverberation is also applied to mimic the effects of different acoustic environments. DDSP implements these three components – harmonic audio, filtered noise, and reverb – as differentiable modules in the TensorFlow library. Both the harmonic and noise modules map low-dimensional "control" signals to audio, while the reverb module maps audio to audio.
 
-![Labeled Track](images/labeled-track.png)
+DDSP modules were first demonstrated as part of an auto-encoder architecture trained to reconstruct monophonic musical instrument sounds. The architecture, pictured below, processes audio as follows: 
+* an input signal is broken into short segments called frames
+* loudness, pitch, and (optionally) spectral features are extracted from each frame
+* these features are passed to a recurrent encoder to produce a compressed representation
+* the original pitch and loudness features are concatenated with the compressed representation and passed to a recurrent decoder which generates low-dimensional control signals to parameterize the harmonic and noise modules
+* the output of the harmonic and noise modules is summed and passed through the reverb module, producing waveform audio of the same length as the input. 
 
-The imported/generated labels are placed at their onset (start) time and the playhead (black upside down triangle) can be used to move around the track. At the bottom of the screen is a play/plause button. There are several navigation controls listed on the website that can be used to move about the labels more easily. Our current implementation also supports adding manual labels.
+The model is trained end-to-end with a multi-scale spectrogram reconstruction loss. Because the autoencoder learns to map pitch and loudness curves to realistic performances of a target instrument, any monophonic audio can be re-rendered as if performed by the target instrument by passing extracted pitch and loudness curves to the model. We refer to this as __timbre transfer__, where timbre refers to the set of sonic attributes which characterize a given instrument outside of pitch and loudness. You can try this for yourself with Magenta's [Tone Transfer](https://sites.research.google/tonetransfer) app or [Colab notebooks](https://colab.research.google.com/github/magenta/ddsp/blob/master/ddsp/colab/demos/timbre_transfer.ipynb).
 
-The goal of the interface is to emulate the track list of a DAW. Currently, there is only support for one track. To reset the interface, simply refresh the page and load a new track.
+</br>
+<div style="text-align:center">
+<figure>
+  <img src="https://i.imgur.com/ml4MvHX.png" width=600px>
+  <figcaption style="font-size:10px;text-align:justify;"> The <b>DDSP autoencoder architecture </b>. From left to right, audio from a monophonic musical instrument is encoded as pitch ("F0") and loudness curves, and optionally as a set of spectral features ("Z"). A decoder maps the encoded input to control signals for the harmonic and noise modules. Audio generated by the modules is summed and passed through the reverb module to produce a reconstruction of the original audio.
+  </figcaption>
+  </figure>
+</div>
+</br>
 
-The interface was created using React.
 
-## Backend
-[View the Source](https://github.com/cod-audio/cod-api)
 
-We're using a flask app to hand off labels and audio between the front-end interface and the machine learning model that powers the automatic labeler. Our app is hosted on [Heroku](https://www.heroku.com).
+A DDSP autoencoder is typically trained to reconstruct audio from a single instrument class using deterministic encoder and decoder networks, without spectral feature inputs; however, the architecture is general enough to allow for a wide range of variations.
 
-Audio is passed from the local machine to the flask app, where the model processes the audio and assigns text labels to the track. These text labels are then passed back to the front-end and displayed on the end user's web page.
 
-## Model
-[View the Source](https://github.com/hugofloresgarcia/instrument-recognition)
+<div style="text-align:center">
+<figure>
+  <img src="https://i.imgur.com/yEcGQti.png" width=500px>
+  <figcaption style="font-size:10px;;text-align:justify;">The <b>DDSP reconstruction process</b>, shown left-to-right in the above autoencoder diagram, is pictured here bottom-to-top. Loudness and pitch ("Fundamental Frequency") signals are mapped by a deterministic encoder and decoder to control signals ("Amplitude," "Harmonic Distribution," "Noise Magnitudes") and passed to DDSP components which generate harmonic audio ("Additive Audio") and filtered noise. The resulting signals are summed and passed through the reverberation module to produce a reconstruction of the original audio ("Full Resynthesis")</figcaption>
+ </figure>
+</div>
+</br>
 
-Big picture, our model consists of three main parts: a mel spectrogram input representation, a pre-trained, convolutional audio embedding model, and a neural network classifier.
 
-### Input Representation
+While the DDSP autoencoder was originally developed to perform timbre transfer, [experiments](https://storage.googleapis.com/ddsp/index.html#independent) in the [original paper](https://arxiv.org/pdf/2001.04643.pdf) suggest its continuous intermediate representations may allow for interpolation between the characteristics of multiple encoded instrument timbres, thereby enabling the creation of interesting "hybrid" timbres (e.g. half-flute, half-guitar). In this project, we explore  methods for performing __timbre interpolation__ using the general DDSP autoencoder architecture.
 
-We use a 128-bin Mel Spectrogram of 1 second of audio as our input. Here are some hyperparameters:
 
-- 48kHz audio goes through a log-mel spectrogram.
-    - This means that the highest frequency we can represent is 24kHz (one half of the sample rate). This is well above the range of human hearing (around 18-20kHz)
+## Timbre Transfer Baselines <a name="baselines"> </a>
 
-- Mel Spectrogram hyperparameters:
-    - Number of Mel frequency bins: 128
-    - Magnitude representation (not power)
-    - FFT window size: 2048 samples (42.67ms)
-    - FFT hop size: 242 samples (5ms)
+We begin by building a set of _decoder-only_ DDSP autoencoder models using the [ddsp_pytorch](https://github.com/acids-ircam/ddsp_pytorch) library, a third-party PyTorch implementation of Magenta's package. Decoder-only models do not encode spectral features from the input audio, and are trained to fit a single instrument timbre using only pitch and loudness. We use a pretrained [CREPE](https://github.com/marl/crepe) pitch extractor to estimate pitch curves and use fixed DSP techniques to extract loudness curves. 
 
+<div style="text-align:center">
+<figure>
+  <img src=https://i.imgur.com/w3HqLRd.png width=600px>
+  <figcaption style="font-size:10px;;text-align:justify;">A <b>DDSP decoder-only model</b>. Pitch ("F0") is encoded using the CREPE pitch-tracking algorithm. Because the model is trained on a single instrument with only pitch and loudness conditioning, the decoder learns to produce a single timbre</figcaption>
+ </figure>
+</div>
+</br>
 
-### Embedding
-We use the audio subnetwork of the [L3-net](https://github.com/marl/openl3) architecture for our embedding model. The weights are initialied to the mel128, music model variant.
 
-*Note*: depending on the kernel size of the last maxpool layer, you have two different embedding sizes to choose from:
+We train models on single-instrument subsets of Google's [NSynth dataset](https://magenta.tensorflow.org/datasets/nsynth), each consisting of a small number of 4-second single-note excerpts from commercial sample libraries. For ease of comparison, we provide  timbre transfer examples using the following source audio:
 
-- With a maxpool kernel of (16, 24), your output embedding is size 512
-- With a maxpool kernel of (4, 8), your output embedding is size 6144
 
-We found during preliminary testing that using an embedding size of 6144 worked best in our case.
+__INSERT SINGNG MP3__
 
-### Classifier
-We use fully connected layers with ReLU activations for our classifier. Because PyTorch code is super readable, here's a code snippet with out model architecture.
+</br>
 
-```python
-class MLP6144(pl.LightningModule):
+__TODO: FILL OUT THIS TABLE WITH THE ACTUAL DECODERS USED!!!!!__
 
-    def __init__(self, dropout, num_output_units):
-        super().__init__()
+| Instrument | Training Examples | CREPE Pitch (avg, s.d.) | Example Output |
+|---|---|---|---|
+| Reed | 418 | 212 ± 188 |  |
+| Strings | 394 | 98 ± 47 |  | 
 
-        self.fc = nn.Sequential(
-            nn.BatchNorm1d(6144),
-            nn.Linear(6144, 512),
-            nn.ReLU(),
-            nn.Dropout(dropout),
 
-            nn.BatchNorm1d(512),
-            nn.Linear(512, 128),
-            nn.ReLU(),
-            nn.Dropout(dropout),
+</br>
 
-            nn.BatchNorm1d(128),
-            nn.Linear(128, num_output_units))
+Additionally, we train decoder-only models on expressive solo violin and clarinet datasets, each consisting of longer and more varied excerpts than NSynth.
 
-    def forward(self, x):
-        return self.fc(x)
-```
+</br>
 
-where `num_output_units` refers to the number of classes in out dataset.
+| Instrument | Training Examples | CREPE Pitch (avg, s.d.) | Example Output |
+|---|---|---|---|
+| clarinet |251| 411 ± 342  |   | 
+| violin |141| 551 ± 221  |   | 
+</br>
 
-We use batch normalization, dropout, and ReLU activations, as well as a Softmax in the output (not pictured above because it's included in our loss function).
+We find that to coax semi-realistic output from the baseline timbre-transfer models, a number of alterations are necessary. These include:
+* **loudness**: we must carefully fine-tune the input loudness signal to match the loudness distribution the model was trained on. Even though we normalize the input loudness to match the mean and standard deviation of the training data loudness distribution, we find that models exhibit wildly different behavior when the loudness is out of distribution, especially on the expressive clarinet and violin decoders. In some cases, a compressive nonlinearity (e.g. sigmoid function) must be applied to keep inputs near a model's "sweet spot."
+* **pitch**: like the authors of the original DDSP paper, we sometimes find it necessary to shift pitch curves by one or more octaves to match a model's training distribution 
 
-### Training
 
-#### Dataset
-We used the [MedleyDB](https://https://github.com/marl/medleydb) dataset for our experiments. The MedleyDB dataset is a multitrack dataset with 122 mixtures of real-life audio recodings of musical instruments and vocals, each with their corresponding stems. We use the [MedleyDB](https://https://github.com/marl/medleydb) artist conditional split function, and split our dataset into 85% train, 15% validation. We remove all classes not present in the validation set, and end up with a 20 instrument dataset. 
 
-The 20 instruments we consider are: `acoustic guitar`,`auxiliary percussion`,`brass section`,`cello`,`clean electric guitar`,`distorted electric guitar`,`double bass`,`drum set`,`electric bass`,`female singer`,`male singer`,`oboe`,`piano`,`synthesizer`,`tack piano`,`trumpet`,`vibraphone`,`viola`,`violin`,`vocalists`. 
+## Time-Varying Latent Timbre Interpolation  <a name="time-varying"> </a>
 
-#### Data Augmentation
-Before adding effects to each separate audio clip, we remove all silent regions from each audio stem and split the stems into 1 second segments, with a hop size of 250ms. After chunking our data into 1 second segments, we end up with 288k training samples and 56k validation samples.
+We begin our exploration of timbre interpolation with two approaches that mix the sonic characteristics of musical instruments at time-varying representations within a DDSP autoencoder.
 
-We preprocess our chunks with random amounts of the following effects (using [pysox](https://github.com/rabitt/pysox)): EQ (up to 5 bandpass filters, low pass and high pass filtering), pitch shifting, time stretching, overdrive, flanger and compression.
+### Synthesizer Control Interpolation <a name="control"> </a>
 
+One straightforward way to mix timbres is to interpolate between the control signals generated by two separately-trained single-instrument DDSP decoder-only models.
 
-#### Hyperparameters
-Here's our set of training hyperparameters:
 
-- number of epochs: 100
-- batch size: 512
-- learning rate: 0.0003, then 0.00003 (after 50 epochs), then 0.000003 (after 75 epochs)
-- loss: weighted cross entropy.
-- optimizer: Adam
 
+<div style="text-align:center">
+<figure>
+  <img src=https://i.imgur.com/tKnsYat.png width=600px>
+  <figcaption style="font-size:10px;;text-align:justify;"><b>Synthesizer control interpolation</b> using two decoder-only models. The control signals emitted by both decoders are linearly interpolated and passed to the DDSP modules. </figcaption>
+ </figure>
+</div>
+</br>
 
-### Mixup experiment
-Since our dataset does not cover every musical instrument that may appear in an audio production scenario, we must deal with out-of-distribution data without making overconfident predictions and potentially worsening the user experience for visually-impaired users by introducing erroneous information that they may have to manually correct.
+To interpolate with decoder-only models, we must train a separate decoder for each instrument we wish to interpolate between. We use the same pitch and loudness conditioning (normalized separately to match the training distributions) for both decoders. Each decoder outputs a tuple composed of the predicted harmonic amplitudes and noise filter magnitudes. We perform linear interpolation between the harmonic amplitudes of both decoders, and do the same for the noise filter magnitudes. In essence, this is equivalent to performing linear interpolation between the time-varying spectral envelopes of these two instruments. 
 
-Deep learning models trained with only one-hot encoded labels are likely to make low-entropy predictions regardless of the classifier’s true uncertainty, or whether the provided input lied within the training distribution or not. [Thulasidasan et. al](https://arxiv.org/pdf/1905.11001.pdf) find that models trained using mixup exhibit significantly better calibration properties for both in and out of distribution data when compared to models trained using regular cross entropy, under the argument that mixup provides a form of entropic regularization on the training signals.
 
-To improve the predictive uncertainty of our model, we conduct an experiment using varying degrees of mixup, and observe its effect on the model's calibration, as well as classification performance.
+#### Synthesizer Control Interpolation Results
 
-#### An overview on mixup
-Mixup training is a recently proposed method for training neural networks on classification tasks that consists of convexly combining inputs and targets in the network. That is, for randomly sampled training examples `(x1, y1)` and `(x2, y2)` we generate new training examples through linear interpolation:
+![](https://i.imgur.com/8eWDlXf.png)
 
-```python
-def mixup(x1, y1, x2, y2, alpha):
-    # sample lambda from a beta distribution
-    lambda_ = beta(alpha, alpha)
+**Violin**: ![](./audio/dcdr-violin)
+**Clarinet**: ![](./audio/dcdr-clarinet)
+**Interpolation (Violin -> Clarinet)**: ![](./audio/dcdr-violin-clarinet)
 
-    mixed_x = lambda_ * x1 + (1 - lambda_) * x2
-    mixed_y = lambda_ * y1 + (1 - lambda_) * y2
-    return mixed_x, mixed_y
-```
+Results for interpolation between synthesizer controls are shown above. The first two rows are reconstructions of "Somewhere over the rainbow" using only the violin and clarinet decoder-only models, respectively. The third row contains a linear interpolation between the synthesizer controls for the violin and clarinet. During the interpolation, we smoothly interpolate from the violin synthesizer controls to the clarinet synthesizer controls over the span of the audio clip. 
 
-Where `lambda_` is a linear interpolator drawn from a symmetric Beta distribution, and `alpha` is a hyperparameter controlling the strength of the convex combination. That is, smaller values of `alpha` approach the base case, where only one of the training examples is considered, while larger values of `alpha` result in more even combinations of the training examples.
+We find that the interpolation between the violin and clarinet timbres using synthesizer controls is rather abrupt, as the sound quickly loses the tonal qualities of the violin, overpowered by the clarinet's tonal qualities. 
 
-#### Experiment setup
+This "abruptness" in interpolation is illustrated in the noise magnitude interpolation between violin and clarinet. It can be observed that the noise filter for the violin model consists of narrowband bursts of noise during string attacks. The clarinet on the other hand, comprises a much more complex noise spectrum. The interpolated noise magnitudes show that the clarinet's noise filter quickly overpowers the violin's noise filter, which can undermine the violin's timbre in the resulting interpolation. 
 
-We evaluate the effect of mixup training on the predictive uncertainty and classification performance of our models. We train model variants with varying degrees of alpha ∈ {0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7}, where alpha = 0 is the baseline case, with no degree of interpolation between training samples. We do mixup at the embedding level.
+### Spectral Feature Interpolation <a name="spectral"> </a>
 
-#### Metrics
+The DDSP autoencoder architecture can be modified to include a recurrent encoder which maps spectral features such as Mel-Frequency Cepstral Coefficients (MFCC) to a low-dimensional, time-varying representation of timbre. While not explicitly disentangled from the pitch and loudness representations, this additional encoder is intended to capture "residual" timbre information and allows a DDSP autoencoder to produce good reconstructions when trained on more than one instrument.
 
-We evaluate our models with two metrics: **micro-averaged F1 score** and **expected calibration error (ECE)**.
+<div style="text-align:center">
+<figure>
+  <img src=https://i.imgur.com/sm7eWvW.png width=600px>
+  <figcaption style="font-size:10px;;text-align:justify;"><b>Spectral feature interpolation</b> using one DDSP autoencoder model with a dedicated timbre encoder. Interpolation is performed between time-varying timbre representations produced by the deterministic encoder. The encoder consists of layer normalization, a gated recurrent unit (GRU), and a linear projection layer.</figcaption>
+ </figure>
+</div>
+</br>
 
-**F1 Score**: The F1 score is a more preferable classification metric than accuracy because it takes dataset imbalance into account. We assume the reader is familiar with the definition of F1 score. 
 
-**Expected Calibration Error (ECE)**
+Using this timbre representation, the authors of the DDSP paper perform limited interpolation experiments with an autoencoder trained on two NSynth instruments. Note that because interpolation is performed between time-varying spectral features obtained from examples in the model's training distribution – rather than the input audio itself – **this approach requires matching-length input and examples of each interpolated timbre, ruling out practical real-time use**. The authors satisfy this constraint by interpolating between individual fixed-length notes from the NSynth dataset; we extend their experiments by tiling randomly-selected examples from the target timbre datasets to match the length of the input signal.
 
-We use ECE as a scalar metric indicative of our model's predictive uncertainty. 
 
-The ECE of a classifier is defined as the expected difference between classifier's confidence and prediction accuracy. That is, for a given set of predictions, a perfectly calibrated model with an accuracy of 70% will have an average confidence of 70%. This is much more preferable than an overconfident model that is only 70% accurate but has an average confidence of 90%. 
+To interpolate between sequences of latent vectors ($Z$), we pick one randomly selected audio example for each instrument, and get the sequence of latent vectors for each instrument using a GRU encoder. Because these examples do not necessarily have the same length as our target audio, we take the mean of each sequence of $Z$s, and construct a sequence of arbitrary length by repeating the resulting mean $Z$ for each instrument. 
 
-To calculate the ECE of a set of predictions, we bin the set of predictions into `M` bins and calculate the weighted average of the difference between accuracy and confidence: 
 
-![ece-definition](./images/ECE-def.png)
+![](https://i.imgur.com/SbgMxMC.png)
 
-where 
-- conf(Bₘ) if the average confidence of prediction in bin Bₘ 
-- acc(Bₘ) is the accuracy for the predictions in bin Bₘ
-- n is the total number of samples in all bins
+**Violin**: ![](./audio/gru-violin)
+**Clarinet**: ![](./audio/gru-clarinet)
+**Interpolation (Violin -> Clarinet)**: ![](./audio/gru-violin-clarinet)
 
-### Results
 
-**Effect of Mixup on the Expected Calibration Error** *(lower is better)*
-![plot of mixup alpha vs ece](./images/ece-test.png)
+Results for the time-varying latent vector interpolation are shown above. Unfortunately, we find that the model disregards the latent vector when synthesizing audio, and produces perceptually similar sounds regardless of what the input $Z$ is. We believe this could be an artifact caused by simply repeating the same $Z$ vector for an entire sequence. 
 
-**Effect of Mixup on F1 score** *(higher is better*)
-![plot of mixup alpha vs f1](./images/f1-test.png)
+## Stationary Latent Timbre Interpolation  <a name="stationary"> </a>
 
-The model with `alpha = 0.4` achieves both the highest F1 score and lowest ECE. We choose this model for our labeler. Additionaly, notice that F1 score drops with high `alpha`. We believe this is due to underfitting. 
+Interpolation between time-varying latent timbre representations poses a challenge for real-time music generation, as the input to the DDSP autoencoder must be matched step-by-step with two or more timbre signals (e.g. the spectral features of the interpolated instruments). While we can circumvent this by mixing the control signals of two or more single-instrument decoders (see "Synthesizer Control Interpolation" above), we may wish to interpolate at a higher-level latent representation in the hopes of smoothly manipulating more meaningful sonic characteristics. One way to do so is to encode timbre in a stationary (non time-varying) latent representation. Examplars of the timbres to be interpolated can then be easily encoded and mixed without any need to match the autoencoder's input signal. The following approaches tackle this stationary encoding task from different angles.
 
-**Reliability Diagram**
-![reliability diagram](./images/reliability-plot.png)
+### Single-Frame Spectral Feature Interpolation <a name="frame"></a> 
 
-The reliability diagram plots accuracy vs confidence for test set predictions. To create a reliability diagram, we split our test set predictions into M bins and calculate the **accuracy** and **average confidence** for each bin. Then, we sort the bins by confidence (X axis) and plot the accuracy with respect to confidence for each bin. 
+This architecture is identical to the "Spectral Feature Interpolation" model shown above, except the GRU encoder is replaced by a small fully-connected network operating on a single MFCC frame (either the first or an average over all frames). Two or more timbre references are encoded, and the resulting single-step representations are interpolated, tiled to match the length of the audio input, and passed to the decoder as fixed per-time-step conditioning signals.
 
-A model with perfect calibration will be as confident as it is accurate, and would be visualized as the `y=x` line in our reliability plot.
+<div style="text-align:center">
+<figure>
+  <img src=https://i.imgur.com/4w9qwn2.png width=600px>
+  <figcaption style="font-size:10px;;text-align:justify;"><b>Single-frame spectral feature interpolation</b> using a DDSP autoencoder model with a dedicated timbre encoder. Interpolation is performed between stationary timbre representations produced by the deterministic fully-connected encoder.</figcaption>
+ </figure>
+</div>
+</br>
 
-**Normalized Confusion Matrix**
+The interpolations produced by this approach are of poor quality and exhibit clear entanglement between timbre and loudness:
 
-Here is the normlized confusion matrix for our best model (`alpha` = 0.4):
+__INSERT AUDIO / PLOT HERE__
 
-*x axis represents predicted labels, while y axis represents true labels.*
-![normalized confusion matrix](./images/norm-confusion-matrix.png)
+Interestingly, the timbre encodings themselves show reasonable separation between instrument classes; unfortunately, it appears that the decoder does not leverage this information and instead over-relies on the pitch and loudness signals.
+
+
+</br>
+<div style="text-align:center">
+<figure>
+  <img src=https://i.imgur.com/nOi0w2V.png width=600px>
+  <figcaption style="font-size:10px;;text-align:justify;">Projected <b>single-frame timbre encodings</b> produced by the first and average MFCC frames. We can see that for both models, timbre encodings are reasonably well-separated. </figcaption>
+ </figure>
+</div>
+</br>
+
+
+
+### Textural Feature Interpolation <a name="texture"></a>
+
+To bias our timbre encoder towards representing local, non-pitch, non-loudness sonic characteristics, we might constrain it to focus on small-scale patterns in the spectral features. While this "textural" focus will not capture meaningful large-scale timbral attributes, it may provide some degree of implicit disentanglement from the pitch/loudness representations while still capturing salient information. To this end, we adopt an approach common to image [texture-synthesis](https://papers.nips.cc/paper/2015/file/a5e00132373a7031000fd987a3c9f87b-Paper.pdf) and [style-transfer](https://arxiv.org/pdf/1508.06576.pdf) in which an input is fed through a set of convolutional filters and a "texture embedding" is computed from cross-correlations between the resulting feature maps.
+
+Our timbre encoder consists of a set of randomly-initialized convolutional filters of various shapes, applied to the MFCC features in parallel to produce a set of time-frequency feature maps. The filter weights are fixed, and we use a large number of output channels to capture a diverse set of spectral statistics. As in image texture-synthesis and style-transfer, cross-correlations (dot products) between the flattened feature maps produced by each filter are computed and stored in [Gram matrices](https://en.wikipedia.org/wiki/Gram_matrix). We flatten and concatenate these matrices and pass them through a small fully-connected network to obtain a low-dimensional timbre representation. Interpolation is performed in the same manner as single-frame spectral feature interpolation, with the fully-connected encoder replaced by the texture encoder described here.
+
+<div style="text-align:center">
+<figure>
+  <img src=https://i.imgur.com/wfjila7.png width=600px>
+  <figcaption style="font-size:10px;;text-align:justify;"><b>Textural feature interpolation</b> is performed in the same manner as single-frame spectral feature interpolation, substituting the timbre encoder architecture shown here. Interpolation is performed between stationary timbre representations produced by the deterministic convolutional encoder.</figcaption>
+ </figure>
+</div>
+</br>
+
+
+This approach is somewhat ad-hoc, as there is no mechanism for enforcing smoothness or other desirable properties in the texture embedding space. As with the spectral feature interpolation, there is no mechanism for forcing the decoder to utilize the texture encodings; we simply hope that this representation is better disentangled from pitch and loudness due to the relative locality and diversity of the Gram statistics. Unfortunately, the resulting interpolations are again of poor quality despite the well-separated embedding space. 
+
+__ADD AUDIO/PLOTS__
+
+</br>
+<div style="text-align:center">
+<figure>
+  <img src=https://i.imgur.com/cMf41lX.png=600px>
+  <figcaption style="font-size:10px;;text-align:justify;">Projected <b>textural timbre encodings</b> produced by the random convolutional method. Again, for both models, timbre encodings are reasonably well-separated. </figcaption>
+ </figure>
+</div>
+</br>
+
+
+
+
+
+## Future Directions  <a name="future"> </a>
+
+Before adopting more complex methods of encoding timbre information (e.g. Variational Autoencoders), the architecture must be modified to force the decoder to utilize timbre encodings; as we have seen, even well-separated timbre representations may not be sufficient for high-quality interpolations. One possible approach is to disentangle the timbre representation from pitch and loudness using an [adversarial loss in the encoded space](https://arxiv.org/pdf/1706.00409.pdf). Another would be to train on a much larger multi-instrument dataset, so that the decoder would not be able to easily discriminate between instrument timbres based on pitch and loudness alone.
+
+Our initial goal was to implement timbre-interpolation in a real-time musical setting using [PureData](https://puredata.info/), and many of our architectural choices were informed by the accompanying constraints on size and speed. Besides completing a real-time timbre-interpolation implementation, future work could therefore extend the approaches detailed here to more complex architectures.
