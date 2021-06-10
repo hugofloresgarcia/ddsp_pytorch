@@ -42,6 +42,7 @@ class GRUDecoder(nn.Module):
         self.out_mlp = ddsp.mlp(hidden_size + 2, hidden_size, N_LAYERS)
 
     def forward(self, f0, loudness, z=None, realtime=False):
+        
         hidden = torch.cat([
             self.f0_mlp(f0),
             self.loudness_mlp(loudness),
@@ -99,6 +100,7 @@ class DDSPDecoder(nn.Module):
         self.register_buffer("phase", torch.zeros(1))
 
     def get_controls(self, batch: dict, realtime=False):
+        
         f0, loudness = batch['f0'], batch['loudness']
         hidden = self.decoder(f0, loudness, realtime)
 

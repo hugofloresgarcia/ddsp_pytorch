@@ -48,7 +48,7 @@ class DDSPInterpolator(torch.nn.Module):
         self.config1 = config1
         self.config2 = config2
 
-    def forward(self, pitch, loudness, alpha):
+    def forward(self, pitch, loudness, alpha, ladd=0):
         
         if isinstance(alpha, int):
             alpha = torch.full_like(pitch, alpha)
@@ -56,8 +56,8 @@ class DDSPInterpolator(torch.nn.Module):
             assert alpha.shape == pitch.shape, "alpha seq must be same dims as pitch seq"
 
         # normalize loudness individually
-        l1 = normalize_loudness(self.config1, loudness)
-        l2 = normalize_loudness(self.config2, loudness)
+        l1 = normalize_loudness(self.config1, loudness) + ladd
+        l2 = normalize_loudness(self.config2, loudness) + ladd
 
         batch1 = {'f0': pitch, 'loudness': l1}
         batch2 = {'f0': pitch, 'loudness': l2}
@@ -76,8 +76,20 @@ class DDSPInterpolator(torch.nn.Module):
             ('magnitudes',), ctrls1['noise_ctrls'],
             ctrls2['noise_ctrls'], alpha)
 
+        if torch.all(alpha == 1):
+            for kn, vd in interp_ctrls.items():
+                for k, v in vd.items():
+                    if not torch.equal(ctrls1[kn][k], v):
+                        breakpoint()
+        if torch.all(alpha == 0):
+            for kn, vd in interp_ctrls.items():
+                for k, v in vd.items():
+                    if not torch.equal(ctrls2[kn][k], v):
+                        breakpoint()
+
+
         # synthesize on just one model
-        output = self.ddsp2.synthesize(batch2, interp_ctrls)
+        output = self.ddsp1.synthesize(batch1, interp_ctrls)
 
         return output
 
@@ -151,8 +163,9 @@ def export_multidecoder_interpolator(config1, config2, out_dir):
     example_input = (
         torch.zeros(1, BUFFER_SIZE, 1),
         torch.zeros(1, BUFFER_SIZE, 1),
-        torch.tensor(0.3)
+        1
     )
+    model(*example_input)
     scripted_model = torch.jit.trace(model, example_input)
     torch.jit.save(
         scripted_model,

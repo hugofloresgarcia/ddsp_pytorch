@@ -25,7 +25,7 @@ class Dataset(torch.utils.data.Dataset):
         s = torch.from_numpy(self.signals[idx])
         p = torch.from_numpy(self.pitchs[idx]).unsqueeze(-1)
         l = torch.from_numpy(self.loudness[idx]).unsqueeze(-1)
-        m = torch.from_numpy(self.mfccs[idx])[:-1, :]
+        m = torch.from_numpy(self.mfccs[idx])
 
         return {
             'sig': s,
@@ -45,10 +45,10 @@ class Datamodule(pl.LightningDataModule):
         self.train_data = Dataset(out_dir / 'train')
         self.val_data = Dataset(out_dir / 'validation')
 
-    def train_dataloader(self):
+    def train_dataloader(self, shuffle=True):
         return DataLoader(self.train_data,
                           batch_size=self.config['train']['batch'],
-                          shuffle=True,
+                          shuffle=shuffle,
                           drop_last=True,
                           collate_fn=dict_collate)
 

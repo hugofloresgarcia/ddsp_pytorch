@@ -129,8 +129,8 @@ def mlp(in_size, hidden_size, n_layers):
     return nn.Sequential(*net)
 
 
-def gru(n_input, hidden_size):
-    return nn.GRU(n_input * hidden_size, hidden_size, batch_first=True)
+def gru(n_input, hidden_size, bidirectional=False):
+    return nn.GRU(n_input * hidden_size, hidden_size, batch_first=True, bidirectional=bidirectional)
 
 
 def harmonic_synth(f0, amplitudes, sample_rate):

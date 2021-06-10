@@ -32,7 +32,7 @@ class DDSPAutoencoder(nn.Module):
     DDSP GRU with deterministic Autoencoder. 
     """
     def __init__(self, hidden_size: int, n_harmonic: int, n_bands: int,
-                 sample_rate: int, block_size: int, has_reverb: bool):
+                 sample_rate: int, block_size: int, has_reverb: bool,):
         super().__init__()
         self.register_buffer("sample_rate", torch.tensor(sample_rate))
         self.register_buffer("block_size", torch.tensor(block_size))
@@ -60,12 +60,10 @@ class DDSPAutoencoder(nn.Module):
 
         self.register_buffer("phase", torch.zeros(1))
 
-    def forward(self, batch: dict):
-        f0, loudness, mfcc = batch['pitch'], batch['loudness'], batch['mfcc']
+    def encode(self, mfcc):
+        return self.encoder(mfcc)
 
-        # get the latent
-        z = self.encoder(mfcc)
-
+    def decode(self, z, f0, loudness):
         hidden = self.decoder(f0, loudness, z=z)
 
         # harmonic synth
@@ -101,6 +99,14 @@ class DDSPAutoencoder(nn.Module):
             'z': z,
         }
         return output
+
+    def forward(self, batch: dict):
+        f0, loudness, mfcc = batch['f0'], batch['loudness'], batch['mfcc']
+
+        # get the latent
+        z = self.encode(mfcc)
+
+        return self.decode(z, f0, loudness)
 
     def reconstruction_report(self,
                               original,
