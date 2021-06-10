@@ -246,6 +246,8 @@ Interpolation between time-varying latent timbre representations poses a challen
 
 This architecture is identical to the "Spectral Feature Interpolation" model shown above, except the GRU encoder is replaced by a small fully-connected network operating on a single MFCC frame (either the first or an average over all frames). Two or more timbre references are encoded, and the resulting single-step representations are interpolated, tiled to match the length of the audio input, and passed to the decoder as fixed per-time-step conditioning signals.
 
+
+
 <div style="text-align:center">
 <figure>
   <img src=https://i.imgur.com/4w9qwn2.png width=600px>
