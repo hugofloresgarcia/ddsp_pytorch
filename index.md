@@ -1,6 +1,6 @@
-# Latent Timbre Interpolation with Differentiable Digital Signal Processing
-By Hugo Flores Garcia and Patrick O'Reilly
-
+---
+title: Latent Timbre Interpolation with Differentiable Digital Signal Processing
+description: Hugo Flores Garcia and Patrick O'Reilly
 ---
 
 ## Contents
@@ -146,9 +146,9 @@ To interpolate with decoder-only models, we must train a separate decoder for ea
 
 ![](https://i.imgur.com/8eWDlXf.png)
 
-**Violin**: ![](./audio/dcdr-violin)
-**Clarinet**: ![](./audio/dcdr-clarinet)
-**Interpolation (Violin -> Clarinet)**: ![](./audio/dcdr-violin-clarinet)
+**Violin**: ![](./audio/dcdr-vio.wav)
+**Clarinet**: ![](./audio/dcdr-clar.wav)
+**Interpolation (Violin -> Clarinet)**: ![](./audio/dcdr-vioclar.wav)
 
 Results for interpolation between synthesizer controls are shown above. The first two rows are reconstructions of "Somewhere over the rainbow" using only the violin and clarinet decoder-only models, respectively. The third row contains a linear interpolation between the synthesizer controls for the violin and clarinet. During the interpolation, we smoothly interpolate from the violin synthesizer controls to the clarinet synthesizer controls over the span of the audio clip. 
 
@@ -177,9 +177,9 @@ To interpolate between sequences of latent vectors ($Z$), we pick one randomly s
 
 ![](https://i.imgur.com/SbgMxMC.png)
 
-**Violin**: ![](./audio/gru-violin)
-**Clarinet**: ![](./audio/gru-clarinet)
-**Interpolation (Violin -> Clarinet)**: ![](./audio/gru-violin-clarinet)
+**Violin**: ![](./audio/gru-vio)
+**Clarinet**: ![](./audio/gru-vlar)
+**Interpolation (Violin -> Clarinet)**: ![](./audio/gru-vioclar)
 
 
 Results for the time-varying latent vector interpolation are shown above. Unfortunately, we find that the model disregards the latent vector when synthesizing audio, and produces perceptually similar sounds regardless of what the input $Z$ is. We believe this could be an artifact caused by simply repeating the same $Z$ vector for an entire sequence. 
