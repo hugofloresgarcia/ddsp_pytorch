@@ -196,13 +196,14 @@ This "abruptness" in interpolation is illustrated in the noise magnitude interpo
 
 The DDSP autoencoder architecture can be modified to include a recurrent encoder which maps spectral features such as Mel-Frequency Cepstral Coefficients (MFCC) to a low-dimensional, time-varying representation of timbre. While not explicitly disentangled from the pitch and loudness representations, this additional encoder is intended to capture "residual" timbre information and allows a DDSP autoencoder to produce good reconstructions when trained on more than one instrument.
 
+
 <div style="text-align:center">
 <figure>
   <img src=https://i.imgur.com/sm7eWvW.png width=600px>
   <figcaption style="font-size:10px;;text-align:justify;"><b>Spectral feature interpolation</b> using one DDSP autoencoder model with a dedicated timbre encoder. Interpolation is performed between time-varying timbre representations produced by the deterministic encoder. The encoder consists of layer normalization, a gated recurrent unit (GRU), and a linear projection layer.</figcaption>
  </figure>
 </div>
-</br>
+
 
 
 Using this timbre representation, the authors of the DDSP paper perform limited interpolation experiments with an autoencoder trained on two NSynth instruments. Note that because interpolation is performed between time-varying spectral features obtained from examples in the model's training distribution – rather than the input audio itself – **this approach requires matching-length input and examples of each interpolated timbre, ruling out practical real-time use**. The authors satisfy this constraint by interpolating between individual fixed-length notes from the NSynth dataset; we extend their experiments by tiling randomly-selected examples from the target timbre datasets to match the length of the input signal.
@@ -264,7 +265,7 @@ __INSERT AUDIO / PLOT HERE__
 Interestingly, the timbre encodings themselves show reasonable separation between instrument classes; unfortunately, it appears that the decoder does not leverage this information and instead over-relies on the pitch and loudness signals.
 
 
-</br>
+
 <div style="text-align:center">
 <figure>
   <img src=https://i.imgur.com/nOi0w2V.png width=600px>
@@ -282,6 +283,7 @@ To bias our timbre encoder towards representing local, non-pitch, non-loudness s
 
 Our timbre encoder consists of a set of randomly-initialized convolutional filters of various shapes, applied to the MFCC features in parallel to produce a set of time-frequency feature maps. The filter weights are fixed, and we use a large number of output channels to capture a diverse set of spectral statistics. As in image texture-synthesis and style-transfer, cross-correlations (dot products) between the flattened feature maps produced by each filter are computed and stored in [Gram matrices](https://en.wikipedia.org/wiki/Gram_matrix). We flatten and concatenate these matrices and pass them through a small fully-connected network to obtain a low-dimensional timbre representation. Interpolation is performed in the same manner as single-frame spectral feature interpolation, with the fully-connected encoder replaced by the texture encoder described here.
 
+
 <div style="text-align:center">
 <figure>
   <img src=https://i.imgur.com/wfjila7.png width=600px>
@@ -296,7 +298,8 @@ This approach is somewhat ad-hoc, as there is no mechanism for enforcing smoothn
 
 __ADD AUDIO/PLOTS__
 
-</br>
+
+
 <div style="text-align:center">
 <figure>
   <img src=https://i.imgur.com/cMf41lX.png=600px>
