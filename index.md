@@ -115,6 +115,7 @@ We train models on single-instrument subsets of Google's [NSynth dataset](https:
 <br />
 Additionally, we train decoder-only models on expressive solo violin and clarinet datasets, each consisting of longer and more varied excerpts than NSynth.
 <br />
+<br />
 
 
 | Instrument | Training Examples | CREPE Pitch (avg, s.d.) | Example Output |
@@ -220,11 +221,22 @@ This architecture is identical to the "Spectral Feature Interpolation" model sho
 
 The interpolations produced by this approach are of poor quality and exhibit clear entanglement between timbre and loudness:
 
-__INSERT AUDIO / PLOT HERE__
+<br />
 
+| Violin-to-Clarinet Interpolation (First Frame) | Violin-to-Clarinet Interpolation (Average Frame) |
+|---|---|
+| <audio controls src="./audio/violin_clarinet_first.wav"></audio> | <audio controls src="./audio/violin_clarinet_average.wav"> </audio> |
+
+<br />
+
+| Reed-to-Strings Interpolation (First Frame) | Reed-to-Strings Interpolation (Average Frame) |
+|---|---|
+| <audio controls src="./audio/reed_string_first.wav"></audio> | <audio controls src="./audio/reed_string_average.wav"> </audio> |
+
+<br />
 Interestingly, the timbre encodings themselves show reasonable separation between instrument classes; unfortunately, it appears that the decoder does not leverage this information and instead over-relies on the pitch and loudness signals.
 
-
+<br />
 
 <div style="text-align:center">
 <figure>
@@ -233,6 +245,7 @@ Interestingly, the timbre encodings themselves show reasonable separation betwee
  </figure>
 </div>
 
+<br />
 
 
 
