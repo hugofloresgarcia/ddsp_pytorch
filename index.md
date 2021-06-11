@@ -104,7 +104,7 @@ We train models on single-instrument subsets of Google's [NSynth dataset](https:
 <figure>
     <audio
         controls
-        src="../audio/singing.mp3">
+        src="./audio/singing.mp3">
             Your browser does not support the
             <code>audio</code> element.
     </audio>
@@ -115,8 +115,10 @@ __TODO: FILL OUT THIS TABLE WITH THE ACTUAL DECODERS USED!!!!!__
 
 | Instrument | Training Examples | CREPE Pitch (avg, s.d.) | Example Output |
 |---|---|---|---|
-| Reed | 418 | 212 ± 188 |  |
-| Strings | 394 | 98 ± 47 |  | 
+| Reed | 418 | 212 ± 188 | <audio controls src="./audio/reed-dcdr.wav"> Your browser does not support the
+            <code>audio</code> element. </audio> |
+| Strings | 394 | 98 ± 47 | <audio controls src="./audio/string-dcdr.wav"> Your browser does not support the
+            <code>audio</code> element. </audio>  | 
 
 
 
@@ -128,8 +130,10 @@ Additionally, we train decoder-only models on expressive solo violin and clarine
 
 | Instrument | Training Examples | CREPE Pitch (avg, s.d.) | Example Output |
 |---|---|---|---|
-| clarinet |251| 411 ± 342  |   | 
-| violin |141| 551 ± 221  |   | 
+| clarinet |251| 411 ± 342  | <audio controls src="./audio/string-vio.wav"> Your browser does not support the
+            <code>audio</code> element. </audio>  | 
+| violin |141| 551 ± 221  | <audio controls src="./audio/string-clar.wav"> Your browser does not support the
+            <code>audio</code> element. </audio>  | 
 
 
 
@@ -163,32 +167,39 @@ One straightforward way to mix timbres is to interpolate between the control sig
 To interpolate with decoder-only models, we must train a separate decoder for each instrument we wish to interpolate between. We use the same pitch and loudness conditioning (normalized separately to match the training distributions) for both decoders. Each decoder outputs a tuple composed of the predicted harmonic amplitudes and noise filter magnitudes. We perform linear interpolation between the harmonic amplitudes of both decoders, and do the same for the noise filter magnitudes. In essence, this is equivalent to performing linear interpolation between the time-varying spectral envelopes of these two instruments. 
 
 
-#### Synthesizer Control Interpolation Results
-
 ![](https://i.imgur.com/8eWDlXf.png)
 
 **Violin**: 
-
+<div style="text-align:center">
+<figure>
 <audio
     controls
     src="./audio/dcdr-vio.wav">
 </audio>
-
-**Clarinet**:
+</figure>
+</div>
  
+**Clarinet**:
+
+<div style="text-align:center">
+<figure>
 <audio
         controls
         src="./audio/dcdr-clar.wav">
 </audio> 
-
+</figure>
+</div>
 
 **Violin -> Clarinet**:
 
+<div style="text-align:center">
+<figure>
 <audio 
     controls 
     src="./audio/dcdr-vioclar.wav"> 
   </audio> 
-
+ </figure>
+ </div>
 
 
 
@@ -222,26 +233,36 @@ To interpolate between sequences of latent vectors ($Z$), we pick one randomly s
 
 **Violin**: 
 
+<div style="text-align:center">
+<figure>
 <audio
     controls
     src="./audio/gru-vio.wav">
 </audio> 
+ </figure>
+ </div>
 
 **Clarinet**:
 
+<div style="text-align:center">
+<figure>
 <audio
     controls
     src="./audio/gru-clar.wav">
 </audio> 
-
+ </figure>
+ </div>
 
 **Violin -> Clarinet**:
 
+<div style="text-align:center">
+<figure>
 <audio 
     controls 
     src="./audio/gru-vioclar.wav"> 
   </audio> 
-
+ </figure>
+ </div>
 
 Results for the time-varying latent vector interpolation are shown above. Unfortunately, we find that the model disregards the latent vector when synthesizing audio, and produces perceptually similar sounds regardless of what the input $Z$ is. We believe this could be an artifact caused by simply repeating the same $Z$ vector for an entire sequence. 
 
