@@ -100,10 +100,16 @@ We begin by building a set of _decoder-only_ DDSP autoencoder models using the [
 
 We train models on single-instrument subsets of Google's [NSynth dataset](https://magenta.tensorflow.org/datasets/nsynth), each consisting of a small number of 4-second single-note excerpts from commercial sample libraries. For ease of comparison, we provide  timbre transfer examples using the following source audio:
 
-
-__INSERT SINGNG MP3__
-
-
+<div style="text-align:center">
+<figure>
+    <audio
+        controls
+        src="../audio/singing.mp3">
+            Your browser does not support the
+            <code>audio</code> element.
+    </audio>
+</figure>
+</div>
 
 __TODO: FILL OUT THIS TABLE WITH THE ACTUAL DECODERS USED!!!!!__
 
@@ -199,7 +205,7 @@ The DDSP autoencoder architecture can be modified to include a recurrent encoder
 
 <div style="text-align:center">
 <figure>
-  <img src=https://i.imgur.com/sm7eWvW.png width=600px>
+  <img src="https://i.imgur.com/sm7eWvW.png" width=600px>
   <figcaption style="font-size:10px;;text-align:justify;"><b>Spectral feature interpolation</b> using one DDSP autoencoder model with a dedicated timbre encoder. Interpolation is performed between time-varying timbre representations produced by the deterministic encoder. The encoder consists of layer normalization, a gated recurrent unit (GRU), and a linear projection layer.</figcaption>
  </figure>
 </div>
@@ -251,7 +257,7 @@ This architecture is identical to the "Spectral Feature Interpolation" model sho
 
 <div style="text-align:center">
 <figure>
-  <img src=https://i.imgur.com/4w9qwn2.png width=600px>
+  <img src="https://i.imgur.com/4w9qwn2.png" width=600px>
   <figcaption style="font-size:10px;;text-align:justify;"><b>Single-frame spectral feature interpolation</b> using a DDSP autoencoder model with a dedicated timbre encoder. Interpolation is performed between stationary timbre representations produced by the deterministic fully-connected encoder.</figcaption>
  </figure>
 </div>
@@ -268,7 +274,7 @@ Interestingly, the timbre encodings themselves show reasonable separation betwee
 
 <div style="text-align:center">
 <figure>
-  <img src=https://i.imgur.com/nOi0w2V.png width=600px>
+  <img src="https://i.imgur.com/nOi0w2V.png" width=600px>
   <figcaption style="font-size:10px;;text-align:justify;">Projected <b>single-frame timbre encodings</b> produced by the first and average MFCC frames. We can see that for both models, timbre encodings are reasonably well-separated. </figcaption>
  </figure>
 </div>
@@ -286,7 +292,7 @@ Our timbre encoder consists of a set of randomly-initialized convolutional filte
 
 <div style="text-align:center">
 <figure>
-  <img src=https://i.imgur.com/wfjila7.png width=600px>
+  <img src="https://i.imgur.com/wfjila7.png" width=600px>
   <figcaption style="font-size:10px;;text-align:justify;"><b>Textural feature interpolation</b> is performed in the same manner as single-frame spectral feature interpolation, substituting the timbre encoder architecture shown here. Interpolation is performed between stationary timbre representations produced by the deterministic convolutional encoder.</figcaption>
  </figure>
 </div>
@@ -302,7 +308,7 @@ __ADD AUDIO/PLOTS__
 
 <div style="text-align:center">
 <figure>
-  <img src=https://i.imgur.com/cMf41lX.png=600px>
+  <img src="https://i.imgur.com/cMf41lX.png" width=600px>
   <figcaption style="font-size:10px;;text-align:justify;">Projected <b>textural timbre encodings</b> produced by the random convolutional method. Again, for both models, timbre encodings are reasonably well-separated. </figcaption>
  </figure>
 </div>
