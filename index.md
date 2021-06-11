@@ -269,9 +269,17 @@ Our timbre encoder consists of a set of randomly-initialized convolutional filte
 
 This approach is somewhat ad-hoc, as there is no mechanism for enforcing smoothness or other desirable properties in the texture embedding space. As with the spectral feature interpolation, there is no mechanism for forcing the decoder to utilize the texture encodings; we simply hope that this representation is better disentangled from pitch and loudness due to the relative locality and diversity of the Gram statistics. Unfortunately, the resulting interpolations are again of poor quality despite the well-separated embedding space. 
 
-__ADD AUDIO/PLOTS__
+
+<br />
+
+| Violin-to-Clarinet Interpolation (Textural) | Reed-to-Strings Interpolation (Textural) |
+|---|---|
+| <audio controls src="./audio/violin_clarinet_gram.wav"></audio> | <audio controls src="./audio/reed_string_gram.wav"> </audio> |
+
+<br />
 
 
+<br />
 
 <div style="text-align:center">
 <figure>
@@ -283,11 +291,11 @@ __ADD AUDIO/PLOTS__
 
 
 
-
+<br />
 
 
 ## Future Directions  <a name="future"> </a>
 
 Before adopting more complex methods of encoding timbre information (e.g. Variational Autoencoders), the architecture must be modified to force the decoder to utilize timbre encodings; as we have seen, even well-separated timbre representations may not be sufficient for high-quality interpolations. One possible approach is to disentangle the timbre representation from pitch and loudness using an [adversarial loss in the encoded space](https://arxiv.org/pdf/1706.00409.pdf). Another would be to train on a much larger multi-instrument dataset, so that the decoder would not be able to easily discriminate between instrument timbres based on pitch and loudness alone.
 
-Our initial goal was to implement timbre-interpolation in a real-time musical setting using [PureData](https://puredata.info/), and many of our architectural choices were informed by the accompanying constraints on size and speed. Besides completing a real-time timbre-interpolation implementation, future work could therefore extend the approaches detailed here to more complex architectures.
+Our initial goal was to implement timbre-interpolation in a real-time musical setting using [PureData](https://puredata.info/), and many of our architectural choices were informed by the accompanying constraints on size and speed. Besides completing a real-time timbre-interpolation implementation, future work could therefore extend the approaches detailed here to larger and more complex architectures.
