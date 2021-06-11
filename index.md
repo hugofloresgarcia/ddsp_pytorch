@@ -22,20 +22,20 @@ description: Hugo Flores Garcia and Patrick O'Reilly
 By way of analogy, imagine you are building a neural network to generate paintings. You might consider training the network to generate pixel-by-pixel in the image domain via autoregression, transposed convolutions, or fully-connected layers. Modeling paintings at this level of granularity will likely be computationally expensive, and the network will have to learn implicitly to mimic the "textural" attributes that arise during the physical process of painting.
 
 
-</br>
+<br />
 <div style="text-align:center">
   <img src="https://i.imgur.com/ph1wgEd.png" width=200px>
 </div>
-</br>
+<br />
 
 On the other hand, imagine you could constrain your network to operate on its digital canvas via brushstrokes. If you could efficiently parameterize this "generating action," you might be able to more accurately mimic some of the textural or physical aspects of painting while reducing your model's complexity.
 
 
-</br>
+<br />
 <div style="text-align:center">
   <img src="https://i.imgur.com/fM2Tylq.png" width=200px>
 </div>
-</br>
+<br />
 
 In the same vein, DDSP allows for the generation of waveform audio using a high-level, physically-inspired model of sound called [Spectral Modeling Synthesis](https://ccrma.stanford.edu/~jos/sasp/Spectral_Modeling_Synthesis.html). Under this model, audio is represented as a time-varying combination of harmonics (sinusoids) and filtered noise. Convolutional reverberation is also applied to mimic the effects of different acoustic environments. DDSP implements these three components – harmonic audio, filtered noise, and reverb – as differentiable modules in the TensorFlow library. Both the harmonic and noise modules map low-dimensional "control" signals to audio, while the reverb module maps audio to audio.
 
@@ -57,19 +57,19 @@ The model is trained end-to-end with a multi-scale spectrogram reconstruction lo
   </figcaption>
   </figure>
 </div>
-</br>
+<br />
 
 
 A DDSP autoencoder is typically trained to reconstruct audio from a single instrument class using deterministic encoder and decoder networks, without spectral feature inputs; however, the architecture is general enough to allow for a wide range of variations.
 
-</br>
+<br />
 <div style="text-align:center">
 <figure>
   <img src="https://i.imgur.com/yEcGQti.png" width=500px>
   <figcaption style="font-size:10px;;text-align:justify;">The <b>DDSP reconstruction process</b>, shown left-to-right in the above autoencoder diagram, is pictured here bottom-to-top. Loudness and pitch ("Fundamental Frequency") signals are mapped by a deterministic encoder and decoder to control signals ("Amplitude," "Harmonic Distribution," "Noise Magnitudes") and passed to DDSP components which generate harmonic audio ("Additive Audio") and filtered noise. The resulting signals are summed and passed through the reverberation module to produce a reconstruction of the original audio ("Full Resynthesis")</figcaption>
  </figure>
 </div>
-</br>
+<br />
 
 
 
@@ -88,12 +88,12 @@ We begin by building a set of _decoder-only_ DDSP autoencoder models using the [
   <figcaption style="font-size:10px;;text-align:justify;">A <b>DDSP decoder-only model</b>. Pitch ("F0") is encoded using the CREPE pitch-tracking algorithm. Because the model is trained on a single instrument with only pitch and loudness conditioning, the decoder learns to produce a single timbre</figcaption>
 </figure>
 </div>
-</br>
+<br />
 
 
 We train models on single-instrument subsets of Google's [NSynth dataset](https://magenta.tensorflow.org/datasets/nsynth), each consisting of a small number of 4-second single-note excerpts from commercial sample libraries. For ease of comparison, we provide  timbre transfer examples using the following source audio:
 
-</br>
+<br />
 <div style="text-align:center">
 <figure>
     <audio
@@ -104,7 +104,7 @@ We train models on single-instrument subsets of Google's [NSynth dataset](https:
     </audio>
 </figure>
 </div>
-</br>
+<br />
 
 | Instrument | Training Examples | CREPE Pitch (avg, s.d.) | Example Output |
 |---|---|---|---|
@@ -112,9 +112,9 @@ We train models on single-instrument subsets of Google's [NSynth dataset](https:
 | Strings | 394 | 98 ± 47 | <audio controls src="./audio/dcdr-string.wav"> Your browser does not support the <code>audio</code> element. </audio>  | 
 
 
-</br>
+<br />
 Additionally, we train decoder-only models on expressive solo violin and clarinet datasets, each consisting of longer and more varied excerpts than NSynth.
-</br>
+<br />
 
 
 | Instrument | Training Examples | CREPE Pitch (avg, s.d.) | Example Output |
@@ -123,7 +123,7 @@ Additionally, we train decoder-only models on expressive solo violin and clarine
 | violin |141| 551 ± 221  | <audio controls src="./audio/dcdr-clar.wav"> Your browser does not support the <code>audio</code> element. </audio>  | 
 
 
-</br>
+<br />
 We find that to coax semi-realistic output from the baseline timbre-transfer models, a number of alterations are necessary. These include:
 * **loudness**: we must carefully fine-tune the input loudness signal to match the loudness distribution the model was trained on. Even though we normalize the input loudness to match the mean and standard deviation of the training data loudness distribution, we find that models exhibit wildly different behavior when the loudness is out of distribution, especially on the expressive clarinet and violin decoders. In some cases, a compressive nonlinearity (e.g. sigmoid function) must be applied to keep inputs near a model's "sweet spot."
 * **pitch**: like the authors of the original DDSP paper, we sometimes find it necessary to shift pitch curves by one or more octaves to match a model's training distribution 
@@ -139,8 +139,6 @@ We begin our exploration of timbre interpolation with two approaches that mix th
 One straightforward way to mix timbres is to interpolate between the control signals generated by two separately-trained single-instrument DDSP decoder-only models.
 
 
-
-
 <div style="text-align:center">
 <figure>
   <img src="https://i.imgur.com/tKnsYat.png" width=600px>
@@ -149,20 +147,20 @@ One straightforward way to mix timbres is to interpolate between the control sig
 </div>
 
 
-</br>
+<br />
 To interpolate with decoder-only models, we must train a separate decoder for each instrument we wish to interpolate between. We use the same pitch and loudness conditioning (normalized separately to match the training distributions) for both decoders. Each decoder outputs a tuple composed of the predicted harmonic amplitudes and noise filter magnitudes. We perform linear interpolation between the harmonic amplitudes of both decoders, and do the same for the noise filter magnitudes. In essence, this is equivalent to performing linear interpolation between the time-varying spectral envelopes of these two instruments. 
-</br>
+<br />
 
 ![](https://i.imgur.com/8eWDlXf.png)
 
-</br>
+<br />
 
 
 | Violin | Clarinet | Violin-to-Clarinet Interpolation |
 |---|---|---|
 |<audio controls src="./audio/dcdr-vio.wav"></audio> | <audio controls src="./audio/dcdr-clar.wav"></audio>  | <audio controls src="./audio/dcdr-vioclar.wav"></audio> |
  
-</br>
+<br />
 Results for interpolation between synthesizer controls are shown above. The first two rows are reconstructions of "Somewhere over the rainbow" using only the violin and clarinet decoder-only models, respectively. The third row contains a linear interpolation between the synthesizer controls for the violin and clarinet. During the interpolation, we smoothly interpolate from the violin synthesizer controls to the clarinet synthesizer controls over the span of the audio clip. 
 
 We find that the interpolation between the violin and clarinet timbres using synthesizer controls is rather abrupt, as the sound quickly loses the tonal qualities of the violin, overpowered by the clarinet's tonal qualities. 
@@ -186,49 +184,24 @@ The DDSP autoencoder architecture can be modified to include a recurrent encoder
 Using this timbre representation, the authors of the DDSP paper perform limited interpolation experiments with an autoencoder trained on two NSynth instruments. Note that because interpolation is performed between time-varying spectral features obtained from examples in the model's training distribution – rather than the input audio itself – **this approach requires matching-length input and examples of each interpolated timbre, ruling out practical real-time use**. The authors satisfy this constraint by interpolating between individual fixed-length notes from the NSynth dataset; we extend their experiments by tiling randomly-selected examples from the target timbre datasets to match the length of the input signal.
 
 
-To interpolate between sequences of latent vectors ($Z$), we pick one randomly selected audio example for each instrument, and get the sequence of latent vectors for each instrument using a GRU encoder. Because these examples do not necessarily have the same length as our target audio, we take the mean of each sequence of $Z$s, and construct a sequence of arbitrary length by repeating the resulting mean $Z$ for each instrument. 
+To interpolate between sequences of latent vectors (_Z_), we pick one randomly selected audio example for each instrument and obtain the sequence of latent vectors for each instrument using a GRU encoder. Because these examples do not necessarily have the same length as our target audio, we take the mean of each sequence and repeat to match the length of incoming audio. 
+<br />
 
 
 ![](https://i.imgur.com/SbgMxMC.png)
 
-**Violin**: 
+<br />
 
-<div style="text-align:center">
-<figure>
-<audio
-    controls
-    src="./audio/gru-vio.wav">
-</audio> 
- </figure>
- </div>
+| Violin | Clarinet | Violin-to-Clarinet Interpolation |
+|---|---|---|
+| <audio controls src="./audio/gru-vio.wav"></audio> | <audio controls src="./audio/gru-clar.wav"> </audio> | <audio controls src="./audio/gru-vioclar.wav"> </audio> | 
 
-**Clarinet**:
-
-<div style="text-align:center">
-<figure>
-<audio
-    controls
-    src="./audio/gru-clar.wav">
-</audio> 
- </figure>
- </div>
-
-**Violin -> Clarinet**:
-
-<div style="text-align:center">
-<figure>
-<audio 
-    controls 
-    src="./audio/gru-vioclar.wav"> 
-  </audio> 
- </figure>
- </div>
-
-Results for the time-varying latent vector interpolation are shown above. Unfortunately, we find that the model disregards the latent vector when synthesizing audio, and produces perceptually similar sounds regardless of what the input $Z$ is. We believe this could be an artifact caused by simply repeating the same $Z$ vector for an entire sequence. 
+<br />
+Results for the time-varying latent vector interpolation are shown above. Unfortunately, we find that the model disregards the latent vector when synthesizing audio, and produces perceptually similar sounds regardless of the encoded timbre references. This may be an artifact caused by our naive repetition of the interpolated _Z_ means. 
 
 ## Stationary Latent Timbre Interpolation  <a name="stationary"> </a>
 
-Interpolation between time-varying latent timbre representations poses a challenge for real-time music generation, as the input to the DDSP autoencoder must be matched step-by-step with two or more timbre signals (e.g. the spectral features of the interpolated instruments). While we can circumvent this by mixing the control signals of two or more single-instrument decoders (see "Synthesizer Control Interpolation" above), we may wish to interpolate at a higher-level latent representation in the hopes of smoothly manipulating more meaningful sonic characteristics. One way to do so is to encode timbre in a stationary (non time-varying) latent representation. Examplars of the timbres to be interpolated can then be easily encoded and mixed without any need to match the autoencoder's input signal. The following approaches tackle this stationary encoding task from different angles.
+Interpolation between time-varying latent timbre representations poses a challenge for real-time music generation, as the input to the DDSP autoencoder must be matched step-by-step with two or more timbre signals (e.g. the spectral features of the interpolated instruments). While we can circumvent this by mixing the control signals of two or more single-instrument decoders (see "Synthesizer Control Interpolation" above), we may wish to interpolate at a higher-level latent representation in the hopes of smoothly manipulating more meaningful sonic characteristics. One way to do so is to encode timbre in a stationary (non time-varying) latent representation. Examplars of the timbres to be interpolated can then be easily encoded and mixed without any need to match the autoencoder's input signal. The following approaches tackle this stationary encoding task from two different angles.
 
 ### Single-Frame Spectral Feature Interpolation <a name="frame"></a> 
 
