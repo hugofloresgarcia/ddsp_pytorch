@@ -22,7 +22,8 @@ class Dataset(torch.utils.data.Dataset):
         s = torch.from_numpy(self.signals[idx])
         p = torch.from_numpy(self.pitchs[idx]).unsqueeze(-1)
         l = torch.from_numpy(self.loudness[idx]).unsqueeze(-1)
-        m = torch.from_numpy(self.mfccs[idx])[:-1, :]
+        #m = torch.from_numpy(self.mfccs[idx])[:-1, :]
+        m = torch.from_numpy(self.mfccs[idx])
 
         return {
             'sig': s,

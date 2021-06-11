@@ -105,8 +105,11 @@ if __name__ == "__main__":
     with open(args.instruments) as inst_file:
         instrument_list = list(filter(None, [l.strip() for l in inst_file.readlines()]))
 
-    single_inst_models = ["single-inst-decoder", "mfcc-autoencoder"]
-    combined_models = ["mfcc-autoencoder"]
+    single_inst_models = ["single-inst-decoder"]
+    combined_models = ["stationary-timbre-encoder_first",
+                       "stationary-timbre-encoder_average",
+                       "stationary-timbre-encoder_gram",
+                       "stationary-timbre-encoder_vae"]
 
     config_default = {
         "data": {
@@ -153,6 +156,8 @@ if __name__ == "__main__":
 
         cache_dirs.append(inst_cache_dir)
 
+        '''
+
         # data splits
         train_dir = os.path.join(inst_data_dir, "train")
         val_dir = os.path.join(inst_data_dir, "validation")
@@ -161,7 +166,7 @@ if __name__ == "__main__":
         files_list = get_files(inst, "wav")
         file_counts.append(len(files_list))
 
-        continue
+        
 
         # withold for validation
         n_train = int(args.prop_train * len(files_list))
@@ -213,31 +218,67 @@ if __name__ == "__main__":
             with open(filename, 'w') as config_file:
                 yaml.dump(config_model, config_file, default_flow_style=False)
 
+        '''
+
     # combined instruments dataset
-    combined_name = "multi-inst"
+    combined_name = "_".join([i.split("/")[-2][:-1] for i in instrument_list])
     combined_cache_dir = os.path.join(args.cache_dir, combined_name)
+
+    '''
 
     # ensure class balance by selecting same number of train/val examples per instrument
     n_train = int(args.prop_train * min(file_counts))
     n_val = int((1 - args.prop_train) * min(file_counts))
 
+    '''
+
     # load from cached single-instrument preprocessed data and re-split
     train_signals, train_pitchs, train_loudness, train_mfccs = [], [], [], []
     val_signals, val_pitchs, val_loudness, val_mfccs = [], [], [], []
 
+    train_counts = []
+    val_counts = []
+
     for inst_cache_dir in cache_dirs:
+        train_sigs = np.load(path.join(inst_cache_dir, "train", "signals.npy"))
+        val_sigs = np.load(path.join(inst_cache_dir, "validation", "signals.npy"))
+
+        print(inst_cache_dir, train_sigs.shape, val_sigs.shape)
+
+        train_counts.append(len(train_sigs))
+        val_counts.append(len(val_sigs))
+
+    n_train = int(args.prop_train * min(train_counts))
+    n_val = int((1 - args.prop_train) * min(val_counts))
+
+    for i, inst_cache_dir in enumerate(cache_dirs):
 
         train_signals.append(np.load(path.join(inst_cache_dir, "train", "signals.npy"))[:n_train])
         val_signals.append(np.load(path.join(inst_cache_dir, "validation", "signals.npy"))[:n_val])
 
-        train_pitchs.append(np.load(path.join(inst_cache_dir, "train", "pitchs.npy"))[:n_train])
-        val_pitchs.append(np.load(path.join(inst_cache_dir, "validation", "pitchs.npy"))[:n_val])
+        if "violin" in inst_cache_dir:
 
-        train_loudness.append(np.load(path.join(inst_cache_dir, "train", "loudness.npy"))[:n_train])
-        val_loudness.append(np.load(path.join(inst_cache_dir, "validation", "loudness.npy"))[:n_val])
+            train_pitchs.append(np.load(path.join(inst_cache_dir, "train", "pitchs.npy"))[:, ::2][:n_train])
+            val_pitchs.append(np.load(path.join(inst_cache_dir, "validation", "pitchs.npy"))[:, ::2][:n_val])
 
-        train_mfccs.append(np.load(path.join(inst_cache_dir, "train", "mfccs.npy"))[:n_train])
-        val_mfccs.append(np.load(path.join(inst_cache_dir, "validation", "mfccs.npy"))[:n_val])
+            train_loudness.append(np.load(path.join(inst_cache_dir, "train", "loudness.npy"))[:, ::2][:n_train])
+            val_loudness.append(np.load(path.join(inst_cache_dir, "validation", "loudness.npy"))[:, ::2][:n_val])
+
+            train_mfccs.append(np.load(path.join(inst_cache_dir, "train", "mfccs.npy"))[:, ::2][:n_train])
+            val_mfccs.append(np.load(path.join(inst_cache_dir, "validation", "mfccs.npy"))[:, ::2][:n_val])
+
+        else:
+
+            train_pitchs.append(np.load(path.join(inst_cache_dir, "train", "pitchs.npy"))[:n_train])
+            val_pitchs.append(np.load(path.join(inst_cache_dir, "validation", "pitchs.npy"))[:n_val])
+
+            train_loudness.append(np.load(path.join(inst_cache_dir, "train", "loudness.npy"))[:n_train])
+            val_loudness.append(np.load(path.join(inst_cache_dir, "validation", "loudness.npy"))[:n_val])
+
+            train_mfccs.append(np.load(path.join(inst_cache_dir, "train", "mfccs.npy"))[:n_train])
+            val_mfccs.append(np.load(path.join(inst_cache_dir, "validation", "mfccs.npy"))[:n_val])
+
+        print(inst_cache_dir, train_signals[i].shape, train_pitchs[i].shape)
 
     # data splits
     combined_train_dir = os.path.join(combined_cache_dir, "train")

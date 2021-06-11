@@ -95,22 +95,20 @@ class StationaryMFCCEncoder(nn.Module):
 
         return G
 
-    def forward(self, mfccs: torch.Tensor):
+    def forward(self, mfccs: torch.Tensor, length=None):
         n_batch, n_frames, n_mfcc = mfccs.shape
 
         if self.encoding == "first":
             x = self.norm(mfccs[:, 0, :])   # idea 1: take only take first mfcc frame per signal
             hidden = self.proj1(x)
+            hidden = self.relu(hidden)
             z = self.proj2(hidden).reshape(n_batch, 1, self.z_dim)
-            # tile to sequence length
-            z = z.repeat(1, n_frames, 1)
         elif self.encoding == "average":
             x = self.norm(torch.mean(mfccs, dim=1))  # idea 2: take average over sequence
             hidden = self.proj1(x)
+            hidden = self.relu(hidden)
             z = self.proj2(hidden).reshape(n_batch, 1, self.z_dim)
-            # tile to sequence length
-            z = z.repeat(1, n_frames, 1)
-        else:  # default to gram matrices
+        elif self.encoding == "gram":  # idea 3: texture embedding
 
             # apply compressive nonlinearity
             x = 2 * torch.sigmoid(self.C * mfccs) - 1  # shape: (n_batch, n_frames, n_mfcc)
@@ -141,6 +139,14 @@ class StationaryMFCCEncoder(nn.Module):
             x = self.relu(x)
             z = self.gram_proj2(x)
             z = z.reshape(n_batch, 1, self.z_dim)
+
+
+        else:  # idea 4: vae
+            pass
+
+        if length:
+            z = z.repeat(1, length, 1)  # tile to sequence length
+        else:
             z = z.repeat(1, n_frames, 1)  # tile to sequence length
 
         return z
@@ -384,6 +390,40 @@ class DDSPTimbreOnlyEncoder(nn.Module):
         return fig
 
 
+class DDSPInterpolator(nn.Module):
+
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model = model
+
+    def sample(self, source: dict, ref1: dict, ref2: dict, alpha: torch.Tensor):
+
+        # obtain required dimensions to match source signal
+        dim_test = self.model.encode(source)
+
+        n_frames = dim_test.shape[1]
+
+        print(n_frames)
+
+        z1 = self.model.encode(ref1, length=n_frames)
+        z2 = self.model.encode(ref2, length=n_frames)
+
+        print(z1.shape, z2.shape)
+
+        for i, d in enumerate(dim_test.shape):
+            z1 = z1.narrow(i, 0, d)
+            z2 = z2.narrow(i, 0, d)
+
+        print(dim_test.shape, z1.shape, z2.shape)
+
+        # fade between encodings according to schedule parameter alpha
+        z = z1 * alpha + z2 * (1 - alpha)
+        output = self.model.decode(z, source)
+
+        return output
+
+
+
 class DDSPStationaryTimbreEncoder(nn.Module):
 
     """
@@ -418,11 +458,16 @@ class DDSPStationaryTimbreEncoder(nn.Module):
 
         self.register_buffer("phase", torch.zeros(1))
 
-    def forward(self, batch: dict):
+    def encode(self, batch: dict, length=None):
         f0, loudness, mfcc = batch['pitch'], batch['loudness'], batch['mfcc']
 
         # get the latent
-        z = self.encoder(mfcc)
+        z = self.encoder(mfcc, length=length)
+
+        return z
+
+    def decode(self, z: torch.Tensor, batch: dict):
+        f0, loudness, mfcc = batch['pitch'], batch['loudness'], batch['mfcc']
 
         hidden = self.decoder(f0, loudness, z=z)
 
@@ -458,6 +503,15 @@ class DDSPStationaryTimbreEncoder(nn.Module):
             'harmonic_ctrls': harmonic_ctrls,
             'z': z,
         }
+        return output
+
+    def forward(self, batch: dict):
+
+        # get the latent
+        z = self.encode(batch)
+
+        output = self.decode(z, batch)
+
         return output
 
     def reconstruction_report(self,

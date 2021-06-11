@@ -1,0 +1,30 @@
+data:
+  data_location: ''
+  extension: wav
+model:
+  kwargs:
+    block_size: 512
+    has_reverb: true
+    hidden_size: 512
+    n_bands: 65
+    n_harmonic: 64
+    sample_rate: 48000
+  name: stationary-timbre-encoder_vae
+preprocess:
+  block_size: 512
+  oneshot: false
+  out_dir: ./cache/violin_clarinet
+  sample_rate: 48000
+  signal_length: 192000
+train:
+  batch: 16
+  lr: 0.001
+  overlap: 0.75
+  scales:
+  - 4096
+  - 2048
+  - 1024
+  - 512
+  - 256
+  - 128
+  steps: 50000

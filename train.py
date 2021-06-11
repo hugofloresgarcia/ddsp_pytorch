@@ -35,10 +35,10 @@ model_name = config["model"]["name"]
 args.NAME = data_name + "_" + model_name
 
 
-def load_model(config: dict):
+def load_model(config):
     """ load a ddsp model by name
-    config["model"]["kwargs"] will be the kwargs 
-    passed to the model. 
+    config["model"]["kwargs"] will be the kwargs
+    passed to the model.
     """
     name = config['model']['name']
     if name == "single-inst-decoder":
@@ -47,10 +47,14 @@ def load_model(config: dict):
         model = ddsp.models.encoder.DDSPAutoencoder(**config["model"]["kwargs"])
     elif name == "timbre-only-encoder":
         model = ddsp.models.encoder.DDSPTimbreOnlyEncoder(**config["model"]["kwargs"])
-    elif name == "vrnn":
-        model = ddsp.models.encoder.DDSPVRNN(**config["model"]["kwargs"])
-    elif name == "stationary-timbre-encoder":
-        model = ddsp.models.encoder.DDSPStationaryTimbreEncoder(**config["model"]["kwargs"])
+    elif name == "stationary-timbre-encoder_first":
+        model = ddsp.models.encoder.DDSPStationaryTimbreEncoder(**config["model"]["kwargs"], encoding="first")
+    elif name == "stationary-timbre-encoder_average":
+        model = ddsp.models.encoder.DDSPStationaryTimbreEncoder(**config["model"]["kwargs"], encoding="average")
+    elif name == "stationary-timbre-encoder_gram":
+        model = ddsp.models.encoder.DDSPStationaryTimbreEncoder(**config["model"]["kwargs"], encoding="gram")
+    elif name == "stationary-timbre-encoder_vae":
+        model = ddsp.models.encoder.DDSPStationaryTimbreEncoder(**config["model"]["kwargs"], encoding="vae")
     else:
         raise ValueError(f'invalid model name: {name}')
     return model
