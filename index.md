@@ -66,8 +66,6 @@ The model is trained end-to-end with a multi-scale spectrogram reconstruction lo
 
 
 
-
-
 A DDSP autoencoder is typically trained to reconstruct audio from a single instrument class using deterministic encoder and decoder networks, without spectral feature inputs; however, the architecture is general enough to allow for a wide range of variations.
 
 
@@ -92,9 +90,9 @@ We begin by building a set of _decoder-only_ DDSP autoencoder models using the [
 
 <div style="text-align:center">
 <figure>
-  <img src=https://i.imgur.com/w3HqLRd.png width=600px>
+  <img src="https://i.imgur.com/w3HqLRd.png" width=600px>
   <figcaption style="font-size:10px;;text-align:justify;">A <b>DDSP decoder-only model</b>. Pitch ("F0") is encoded using the CREPE pitch-tracking algorithm. Because the model is trained on a single instrument with only pitch and loudness conditioning, the decoder learns to produce a single timbre</figcaption>
- </figure>
+</figure>
 </div>
 
 
@@ -149,7 +147,7 @@ One straightforward way to mix timbres is to interpolate between the control sig
 
 <div style="text-align:center">
 <figure>
-  <img src=https://i.imgur.com/tKnsYat.png width=600px>
+  <img src="https://i.imgur.com/tKnsYat.png" width=600px>
   <figcaption style="font-size:10px;;text-align:justify;"><b>Synthesizer control interpolation</b> using two decoder-only models. The control signals emitted by both decoders are linearly interpolated and passed to the DDSP modules. </figcaption>
  </figure>
 </div>
