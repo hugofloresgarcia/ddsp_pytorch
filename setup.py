@@ -10,7 +10,7 @@ setup(
     author='',
     author_email='',
     install_requires=[
-        'numpy>=1.19.4',
+        'numpy==1.20',
         'crepe>=0.0.11',
         'librosa>=0.8.0',
         'einops>=0.3.0',
@@ -22,6 +22,7 @@ setup(
         'PyYAML>=5.3.1',
         'tensorflow',
         'tensorboard',
+        'pytorch-lightning'
     ],
     packages=['ddsp'],
     long_description=long_description,
